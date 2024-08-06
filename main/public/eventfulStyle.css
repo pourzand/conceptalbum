@@ -1,0 +1,211 @@
+:root {
+  --background: #050627;
+  --accentOne: #e9dc7e;
+  --accentOneDark: #decc3f;
+
+  --accentTwo: #049a8f;
+
+  /* --background: #050627 ;
+      --accentOne:#e9dc7e;
+      --accentOneDark: #DECC3F; */
+}
+
+.welcomePage {
+  background-color: var(--background);
+  font-family: "Helvetica", "Arial", sans-serif;
+  height: 50em;
+
+  /* 049A8F accent?  */
+}
+
+.page {
+  background-color: var(--background);
+  font-family: "Helvetica", "Arial", sans-serif;
+  height: 100em;
+
+  /* 049A8F accent?  */
+}
+
+.title {
+  margin-bottom: 0.2em;
+  margin-top: -1%;
+  text-align: center;
+  font-size: 10vw;
+  font-style: normal;
+  color: var(--accentOne);
+}
+
+.card {
+  position: relative;
+  width: 46%;
+  padding-top: 44%; /* 1:1 Aspect Ratio */
+  float: left;
+  margin: 2%;
+}
+
+.cardContainer {
+  color: white;
+}
+
+.contentCard {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 2%;
+  right: 2%;
+  text-align: center;
+  font-size: 20px;
+  background-color: var(--accentOne);
+  z-index: 2;
+}
+
+.underCard {
+  position: absolute;
+  top: 2%;
+  left: 2%;
+  bottom: 0;
+  right: 0;
+  text-align: center;
+  font-size: 20px;
+  background-color: var(--accentOneDark);
+  padding-top: 1%;
+  padding-left: 1%;
+  z-index: 1;
+}
+
+.album1 {
+  width: 35%;
+  float: left;
+  padding: 4%;
+}
+
+.contentTitle {
+  font-weight: 700;
+  font-size: 1.5vw;
+
+  color: var(--background);
+  text-align: left;
+  /* padding-top: 4.3%; */
+  height: 100%;
+  overflow: auto;
+  /* margin-top: 5%; */
+}
+
+.column {
+  padding-top: 5%;
+  /* height: 100%;
+  margin: 0 auto; */
+  width: 56%;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 17vw;
+}
+
+/* .end {
+  padding-bottom: 0;
+} */
+
+.userInfo {
+  color: white;
+}
+
+.topSection {
+  width: 100%;
+  /* padding-bottom: 43%; */
+}
+
+.eventsList {
+  float: left;
+  text-align: left;
+  font-size: 1.5vw;
+
+  padding-left: 4%;
+  font-weight: 700;
+  color: var(--background);
+  padding-bottom: 2%;
+}
+
+.eventItem {
+  padding-bottom: 3%;
+  padding-right: 2%;
+  /* height: 6.6vw; */
+  width: 97%;
+  color: navy;
+  font-size: 1.3vw;
+}
+
+.eventTitle {
+  margin-top: -1%;
+  padding-bottom: 1%;
+  padding-right: 2%;
+  font-size: 1.5vw;
+}
+.welcome {
+  -webkit-text-stroke: 0.04em var(--accentOne);
+  color: #050627;
+  font-size: 2em;
+  padding: 3%;
+  text-align: center;
+}
+
+.buttonContainer {
+  display: flex;
+  justify-content: center;
+  align-content: center;
+}
+
+.beginButton {
+  background-color: var(--accentOne);
+  /* color: var(--background);
+  justify-content: center;
+  align-items: center;
+  width: 20%;
+  height: 7vh;
+  font-size: 1.5em;
+  font-weight: 600;
+  border-radius: 0.2em; */
+
+  color: #fff;
+  font-size: 1.5em;
+  font-weight: 700;
+  border-radius: 1em;
+  margin: 16px 0;
+  padding: 8px 36px;
+  text-align: center;
+  /* text-transform: lowercase; */
+  cursor: pointer;
+  box-shadow: none;
+  border: none;
+}
+.beginButton:hover {
+  background-color: var(--accentOneDark);
+  color: var(--background);
+}
+
+.albumArtwork {
+  width: 20vh;
+  height: 20vh;
+}
+
+footer {
+  clear: both;
+  position: absolute;
+  height: 10vh;
+  margin-top: 0vh;
+  color: var(--accentOne);
+  bottom: 0;
+  text-align: center;
+  left: 40%;
+  right: 40%;
+}
+
+a:link:hover {
+  color: var(--accentOne);
+}
+
+a:link {
+  color: var(--accentOneDark);
+  cursor: pointer;
+}

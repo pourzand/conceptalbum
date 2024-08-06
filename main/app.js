@@ -1,38 +1,31 @@
-/**
- * This is an example of a basic node.js script that performs
- * the Authorization Code oAuth2 flow to authenticate against
- * the Spotify Accounts.
- *
- * For more information, read
- * https://developer.spotify.com/web-api/authorization-guide/#authorization_code_flow
- */
+const express = require('express'); // Express web server framework
+const request = require('request'); // "Request" library
+const cors = require('cors');
+const querystring = require('querystring');
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const port = 8888;
 
-var express = require('express'); // Express web server framework
-var request = require('request'); // "Request" library
-var cors = require('cors');
-var querystring = require('querystring');
-var cookieParser = require('cookie-parser');
-var bodyParser = require('body-parser');
-var port = 8888;
+const client_id = 'ea4ceeed7ac442f0a692fae6b60e70d4'; // Your client id
+const client_secret = '69329331d2f847cc9e52216291bd1e76'; // Your secret
+const redirect_uri = 'http://localhost:8888/callback'; // Your redirect uri
 
-var client_id = 'ea4ceeed7ac442f0a692fae6b60e70d4'; // Your client id
-var client_secret = '69329331d2f847cc9e52216291bd1e76'; // Your secret
-var redirect_uri = 'http://localhost:8888/callback'; // Your redirect uri
-var top_artists = {};
-var top_artist_names = new Set();
-var num_pairs = 5;
-var num_artists = 50;
+let top_artists = {};
+const top_artist_names = new Set();
+const num_pairs = 5;
+const num_artists = 50;
+let access_token = '';
 
 /**
  * Generates a random string containing numbers and letters
  * @param  {number} length The length of the string
  * @return {string} The generated string
  */
-var generateRandomString = function(length) {
-  var text = '';
-  var possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const generateRandomString = function(length) {
+  let text = '';
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
 
-  for (var i = 0; i < length; i++) {
+  for (let i = 0; i < length; i++) {
     text += possible.charAt(Math.floor(Math.random() * possible.length));
   }
   return text;
@@ -56,16 +49,18 @@ function getRandomElement(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
 
-// Function to find valid pairs
+// Function to find valid pairs without repeats like "Future and Kanye" and "Kanye and Future"
 function findValidPairs(pairData, artistNames) {
   const validPairs = new Set();
   const checkedPairs = new Set();
 
-  while (validPairs.size < 5 && pairData.length > 0) {
+  while (validPairs.size < num_pairs && pairData.length > 0) {
     const randomPairData = getRandomElement(pairData);
     const [artist1, artist2] = randomPairData.pair;
 
-    const pairKey = artist1 + "-" + artist2;
+    // Sort the pair to ensure "Future and Kanye" and "Kanye and Future" are treated the same
+    const sortedPair = [artist1, artist2].sort();
+    const pairKey = sortedPair.join('-');
 
     if (artistNames.has(artist1) && artistNames.has(artist2) && !checkedPairs.has(pairKey)) {
       validPairs.add(randomPairData);
@@ -79,30 +74,135 @@ function findValidPairs(pairData, artistNames) {
   return Array.from(validPairs);
 }
 
+// Function to fetch artist's albums
+async function fetchAlbums(artistId) {
+  return new Promise((resolve, reject) => {
+    const url = `https://api.spotify.com/v1/artists/${artistId}/albums?limit=50`;
+    request.get({
+      url: url,
+      headers: {
+        'Authorization': 'Bearer ' + access_token,
+        'Content-Type': 'application/json'
+      },
+      json: true
+    }, (error, response, body) => {
+      if (error) {
+        return reject(error);
+      }
+      resolve(body.items || []);
+    });
+  });
+}
 
-var stateKey = 'spotify_auth_state';
+// Function to fetch tracks from an album and filter them based on the artist's presence
+async function fetchTracks(albumId, artistId) {
+  return new Promise((resolve, reject) => {
+    const url = `https://api.spotify.com/v1/albums/${albumId}/tracks?limit=50`;
+    request.get({
+      url: url,
+      headers: {
+        'Authorization': 'Bearer ' + access_token,
+        'Content-Type': 'application/json'
+      },
+      json: true
+    }, (error, response, body) => {
+      if (error) {
+        return reject(error);
+      }
+      const filteredTracks = (body.items || []).filter(track => track.artists.some(artist => artist.id === artistId));
+      resolve(filteredTracks);
+    });
+  });
+}
 
-var app = express();
+// Function to remove featured artists from track names
+function removeFeaturedArtists(trackName) {
+  return trackName.replace(/ *\([^)]*\) */g, "");
+}
 
-//support parsing of application/json type post data
+// Function to get the artist ID by name
+async function fetchArtistId(artistName) {
+  return new Promise((resolve, reject) => {
+    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`;
+    request.get({
+      url: url,
+      headers: {
+        'Authorization': 'Bearer ' + access_token,
+        'Content-Type': 'application/json'
+      },
+      json: true
+    }, (error, response, body) => {
+      if (error) {
+        return reject(error);
+      }
+      if (body.artists.items.length > 0) {
+        resolve(body.artists.items[0].id);
+      } else {
+        reject(new Error(`Artist not found: ${artistName}`));
+      }
+    });
+  });
+}
+
+// Main function to get all song names for a given artist
+async function getAllSongs(artistId) {
+  try {
+    const albums = await fetchAlbums(artistId);
+    const allTracksSet = new Set();
+
+    for (const album of albums) {
+      const tracks = await fetchTracks(album.id, artistId);
+      for (const track of tracks) {
+        const cleanedTrackName = removeFeaturedArtists(track.name);
+        allTracksSet.add(cleanedTrackName);
+      }
+    }
+
+    return Array.from(allTracksSet); // Convert Set to Array to ensure uniqueness
+  } catch (error) {
+    console.error('Error fetching songs:', error);
+    return [];
+  }
+}
+
+// Main function to process pair data and add song names
+async function processPairs(pairData) {
+  console.log('Starting to process pairs...'); // Debug statement
+  for (const pair of pairData) {
+    for (const artistName of pair.pair) {
+      console.log(`Fetching ID for artist: ${artistName}`); // Debug statement
+      const artistId = await fetchArtistId(artistName);
+      console.log(`Fetched ID for artist ${artistName}: ${artistId}`); // Debug statement
+      const songs = await getAllSongs(artistId);
+      console.log(`Fetched songs for artist ${artistName}: ${songs.length} songs`); // Debug statement
+      pair[artistName] = songs;
+    }
+  }
+  console.log('Finished processing pairs.'); // Debug statement
+
+  return pairData;
+}
+
+const stateKey = 'spotify_auth_state';
+
+const app = express();
+
+// Support parsing of application/json type post data
 app.use(bodyParser.json());
 
-//support parsing of application/x-www-form-urlencoded post data
+// Support parsing of application/x-www-form-urlencoded post data
 app.use(bodyParser.urlencoded({ extended: true }));
 
-
 app.use(express.static(__dirname + '/public'))
-   .use(cors())
-   .use(cookieParser());
-
+  .use(cors())
+  .use(cookieParser());
 
 app.get('/login', function(req, res) {
-
-  var state = generateRandomString(16);
+  const state = generateRandomString(16);
   res.cookie(stateKey, state);
 
-  // your application requests authorization
-  var scope = 'user-read-private user-read-email user-top-read';
+  // Your application requests authorization
+  const scope = 'user-read-private user-read-email user-top-read';
   res.redirect('https://accounts.spotify.com/authorize?' +
     querystring.stringify({
       response_type: 'code',
@@ -114,17 +214,21 @@ app.get('/login', function(req, res) {
 });
 
 app.get('/artists', function(req, res) {
-  var pair_list = findValidPairs(findArtistPairs(top_artists), top_artist_names);
-  res.send(pair_list);
+  const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
+  console.log('Found pairs:', pairs); // Debug statement
+  processPairs(pairs).then(processedPairs => {
+    console.log('Processed pairs:', processedPairs); // Debug statement
+    res.send(processedPairs, null, 2);
+  }).catch(error => {
+    console.error('Error processing pairs:', error); // Debug statement
+    res.status(500).send({ error: 'Failed to process pairs' });
+  });
 });
 
-
-
 app.get('/callback', function(req, res) {
-
-  var code = req.query.code || null;
-  var state = req.query.state || null;
-  var storedState = req.cookies ? req.cookies[stateKey] : null;
+  const code = req.query.code || null;
+  const state = req.query.state || null;
+  const storedState = req.cookies ? req.cookies[stateKey] : null;
 
   if (state === null || state !== storedState) {
     res.redirect('/#' +
@@ -133,7 +237,7 @@ app.get('/callback', function(req, res) {
       }));
   } else {
     res.clearCookie(stateKey);
-    var authOptions = {
+    const authOptions = {
       url: 'https://accounts.spotify.com/api/token',
       form: {
         code: code,
@@ -141,43 +245,42 @@ app.get('/callback', function(req, res) {
         grant_type: 'authorization_code'
       },
       headers: {
-        'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64'))
+        'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64'))
       },
       json: true
     };
 
     request.post(authOptions, function(error, response, body) {
       if (!error && response.statusCode === 200) {
+        access_token = body.access_token;
+        const refresh_token = body.refresh_token;
 
-        var access_token = body.access_token,
-            refresh_token = body.refresh_token;
-
-        var options = {
+        const options = {
           url: 'https://api.spotify.com/v1/me',
           headers: { 'Authorization': 'Bearer ' + access_token },
           json: true
         };
 
-        // use the access token to access the Spotify Web API
+        // Use the access token to access the Spotify Web API
         request.get(options, function(error, response, body) {
           console.log(body);
         });
 
-        var artistList = { 
-          url: 'https://api.spotify.com/v1/me/top/artists/?limit=' + num_artists, 
+        const artistList = {
+          url: `https://api.spotify.com/v1/me/top/artists/?limit=${num_artists}`,
           headers: { 'Authorization': 'Bearer ' + access_token },
           json: true
         };
 
-        request.get(artistList, function(error, response, body) { 
-          if (!error && response.statusCode === 200) { 
+        request.get(artistList, function(error, response, body) {
+          if (!error && response.statusCode === 200) {
             top_artists = body;
 
             // Get similar artists for each top artist
-            var completedRequests = 0;
+            let completedRequests = 0;
             top_artists.items.forEach((artist, index) => {
               top_artist_names.add(artist.name);
-              var similarOptions = {
+              const similarOptions = {
                 url: `https://api.spotify.com/v1/artists/${artist.id}/related-artists`,
                 headers: { 'Authorization': 'Bearer ' + access_token },
                 json: true
@@ -200,7 +303,7 @@ app.get('/callback', function(req, res) {
                 }
               });
             });
-          } else { 
+          } else {
             console.log(response.statusCode);
           }
         });
@@ -215,12 +318,11 @@ app.get('/callback', function(req, res) {
 });
 
 app.get('/refresh_token', function(req, res) {
-
-  // requesting access token from refresh token
-  var refresh_token = req.query.refresh_token;
-  var authOptions = {
+  // Requesting access token from refresh token
+  const refresh_token = req.query.refresh_token;
+  const authOptions = {
     url: 'https://accounts.spotify.com/api/token',
-    headers: { 'Authorization': 'Basic ' + (new Buffer(client_id + ':' + client_secret).toString('base64')) },
+    headers: { 'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')) },
     form: {
       grant_type: 'refresh_token',
       refresh_token: refresh_token
@@ -230,7 +332,7 @@ app.get('/refresh_token', function(req, res) {
 
   request.post(authOptions, function(error, response, body) {
     if (!error && response.statusCode === 200) {
-      var access_token = body.access_token;
+      const access_token = body.access_token;
       res.send({
         'access_token': access_token
       });

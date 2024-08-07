@@ -1521,7 +1521,7 @@ async function callLLM(prompt) {
   
   console.log(result["content"]);
   console.log("done?");
-  return result;
+  return result["content"];
 }
 
 /**
@@ -1761,11 +1761,9 @@ app.get('/artists', async function(req, res) {
     }
 
     const responses = await Promise.all(promises);
-    //    res.json(responses);
 
-    const contentResponses = responses.map(response => ({ content: response.content }));
-
-    res.json(contentResponses);
+    // const contentResponses = responses.map(response => ({ content: response.content }));
+    res.json(responses);
 
   } catch (error) {
     console.error('Error:', error);

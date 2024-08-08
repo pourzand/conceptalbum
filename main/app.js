@@ -1585,7 +1585,7 @@ function findValidPairs(pairData, artistNames) {
 // Function to fetch artist's albums
 async function fetchAlbums(artistId) {
   return new Promise((resolve, reject) => {
-    const url = `https://api.spotify.com/v1/artists/${artistId}/albums?limit=50`;
+    const url = `https://api.spotify.com/v1/artists/${artistId}/albums?limit=10&include_group=album`;
     request.get({
       url: url,
       headers: {
@@ -1605,7 +1605,7 @@ async function fetchAlbums(artistId) {
 // Function to fetch tracks from an album and filter them based on the artist's presence
 async function fetchTracks(albumId, artistId) {
   return new Promise((resolve, reject) => {
-    const url = `https://api.spotify.com/v1/albums/${albumId}/tracks?limit=50`;
+    const url = `https://api.spotify.com/v1/albums/${albumId}/tracks?limit=35`;
     request.get({
       url: url,
       headers: {

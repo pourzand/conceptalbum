@@ -26,10 +26,13 @@ const num_pairs = 5;
 const num_artists = 50;
 let access_token = '';
 
+var leastPopularArtistId = '';
+var leastPopularity = Infinity;
+
 const MAX_CACHE_SIZE = 500;
 const similarArtistsCache = new Map();
 
-const sample_data = [
+var sample_data = [
   {
     "pair": [
       "AG Club",
@@ -1550,18 +1553,12 @@ async function fetchSimilarArtists(artistId, popularity) {
       }
       if (body && body.artists) {
         // Check if cache is full and evict least popular artist if needed
+        if (popularity < leastPopularArtistId) {
+          leastPopularArtistId = artistId;
+          leastPopularity = popularity;
+        }
         if (similarArtistsCache.size >= MAX_CACHE_SIZE) {
-          let leastPopularArtistId = null;
-          let leastPopularity = Infinity;
-          for (let [key, value] of similarArtistsCache.entries()) {
-            if (value.popularity < leastPopularity) {
-              leastPopularity = value.popularity;
-              leastPopularArtistId = key;
-            }
-          }
-          if (leastPopularArtistId) {
-            similarArtistsCache.delete(leastPopularArtistId);
-          }
+          similarArtistsCache.delete(leastPopularArtistId);
         }
 
         // Add to cache
@@ -1780,11 +1777,13 @@ app.get('/artists', async function(req, res) {
   try {
 
     // uncomment if not using sample data
-    /* const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
+     const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
     console.log('Found pairs:', pairs); // Debug statement
     
     const processedPairs = await processPairs(pairs);
-    console.log('Processed pairs:', processedPairs); // Debug statement */
+    console.log('Processed pairs:', processedPairs); // Debug statement 
+
+    sample_data = processedPairs;
 
     const promises = [];
     for (let i = 0; i < 3; i++) {

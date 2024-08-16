@@ -26,11 +26,23 @@ const num_pairs = 5;
 const num_artists = 50;
 let access_token = '';
 
-var leastPopularArtistId = '';
-var leastPopularity = Infinity;
+var leastPopularArtistId1 = '';
+var leastPopularity1 = Infinity;
+var leastPopularArtistId2 = '';
+var leastPopularity2 = Infinity;
 
 const MAX_CACHE_SIZE = 500;
-const similarArtistsCache = new Map();
+var similarArtistsCache = new Map();
+var songCache = new Map();
+
+const apiCallCounter = {
+  total: 0,
+  similarArtists: 0,
+  getAlbums: 0,
+  getSongs: 0,
+  getTopArtists: 0,
+};
+
 
 var sample_data = [
   {
@@ -1527,16 +1539,20 @@ async function callLLM(prompt) {
     ]
   ]);
   
-  console.log(result["content"]);
-  console.log("done?");
+  //console.log(result["content"]);
+  //console.log("done?");
   return result["content"];
 }
 
 // Function to fetch similar artists with caching and prioritize by popularity
 async function fetchSimilarArtists(artistId, popularity) {
   if (similarArtistsCache.has(artistId)) {
+    console.log("----------cache used for similar artist----------");
     return similarArtistsCache.get(artistId).artists;
   }
+
+  apiCallCounter.total += 1;
+  apiCallCounter.similarArtists += 1;
 
   return new Promise((resolve, reject) => {
     const url = `https://api.spotify.com/v1/artists/${artistId}/related-artists`;
@@ -1553,9 +1569,9 @@ async function fetchSimilarArtists(artistId, popularity) {
       }
       if (body && body.artists) {
         // Check if cache is full and evict least popular artist if needed
-        if (popularity < leastPopularArtistId) {
-          leastPopularArtistId = artistId;
-          leastPopularity = popularity;
+        if (popularity < leastPopularArtistId1) {
+          leastPopularArtistId1 = artistId;
+          leastPopularity1 = popularity;
         }
         if (similarArtistsCache.size >= MAX_CACHE_SIZE) {
           similarArtistsCache.delete(leastPopularArtistId);
@@ -1563,6 +1579,7 @@ async function fetchSimilarArtists(artistId, popularity) {
 
         // Add to cache
         similarArtistsCache.set(artistId, { artists: body.artists, popularity });
+        console.log("cached " + artistId + " similar artists");
         resolve(body.artists);
       } else {
         resolve([]);
@@ -1592,7 +1609,7 @@ function findArtistPairs(data) {
     artist.similar_artists.forEach(similarArtist => {
       const commonGenres = artist.genres.filter(genre => similarArtist.genres.includes(genre));
       if (commonGenres.length > 0) {
-        artistPairs.push({ pair: [artist.name, similarArtist.name], genres: commonGenres });
+        artistPairs.push({ pair: [artist.name, similarArtist.name], genres: commonGenres, ids: [artist.id, similarArtist.id], popularity: [artist.popularity, artist.popularity] });
       }
     });
   });
@@ -1631,6 +1648,8 @@ function findValidPairs(pairData, artistNames) {
 
 // Function to fetch artist's albums
 async function fetchAlbums(artistId) {
+  apiCallCounter.total += 1;
+  apiCallCounter.getAlbums += 1;
   return new Promise((resolve, reject) => {
     const url = `https://api.spotify.com/v1/artists/${artistId}/albums?limit=10&include_group=album`;
     request.get({
@@ -1651,6 +1670,8 @@ async function fetchAlbums(artistId) {
 
 // Function to fetch tracks from an album and filter them based on the artist's presence
 async function fetchTracks(albumId, artistId) {
+  apiCallCounter.total += 1;
+  apiCallCounter.getSongs += 1;
   return new Promise((resolve, reject) => {
     const url = `https://api.spotify.com/v1/albums/${albumId}/tracks?limit=35`;
     request.get({
@@ -1677,6 +1698,8 @@ function removeFeaturedArtists(trackName) {
 
 // Function to get the artist ID by name
 async function fetchArtistId(artistName) {
+  apiCallCounter.total += 1;
+  apiCallCounter.getTopArtists += 1;
   return new Promise((resolve, reject) => {
     const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`;
     request.get({
@@ -1700,10 +1723,16 @@ async function fetchArtistId(artistName) {
 }
 
 // Main function to get all song names for a given artist
-async function getAllSongs(artistId) {
+async function getAllSongs(artistId, popularity) {
+  if (songCache.has(artistId)) {
+    console.log("----------cache used for songs----------");
+    return songCache.get(artistId).songs;
+  }
+
   try {
     const albums = await fetchAlbums(artistId);
     const allTracksSet = new Set();
+    console.log("ALBUMS: " + albums);
 
     for (const album of albums) {
       const tracks = await fetchTracks(album.id, artistId);
@@ -1712,6 +1741,17 @@ async function getAllSongs(artistId) {
         allTracksSet.add(cleanedTrackName);
       }
     }
+
+    //Song Cache 
+    if (popularity < leastPopularArtistId2) {
+      leastPopularArtistId2 = artistId;
+      leastPopularity2 = popularity;
+    }
+    if (songCache.size >= MAX_CACHE_SIZE) {
+      songCache.delete(leastPopularArtistId2);
+    }
+    songCache.set(artistId, { songs: Array.from(allTracksSet), popularity });
+    console.log("cached " + artistId + " songs");
 
     return Array.from(allTracksSet); // Convert Set to Array to ensure uniqueness
   } catch (error) {
@@ -1722,17 +1762,21 @@ async function getAllSongs(artistId) {
 
 // Main function to process pair data and add song names
 async function processPairs(pairData) {
-  console.log('Starting to process pairs...'); // Debug statement
-  for (const pair of pairData) {
-    for (const artistName of pair.pair) {
-      console.log(`Fetching ID for artist: ${artistName}`); // Debug statement
-      const artistId = await fetchArtistId(artistName);
-      console.log(`Fetched ID for artist ${artistName}: ${artistId}`); // Debug statement
-      const songs = await getAllSongs(artistId);
-      console.log(`Fetched songs for artist ${artistName}: ${songs.length} songs`); // Debug statement
+  for (let i = 0; i < pairData.length; i++) {
+    var pair = pairData[i];
+    console.log("pair: " + pair);
+    for (let i = 0; i < 2; i++) {
+      var artistName = pair.pair[i];
+      console.log("artist name: " + artistName);
+      var artistId = pair.ids[i];
+      console.log("artist id: " + artistId);
+      var songs = await getAllSongs(pair.ids[i], pair.popularity[i]);
       pair[artistName] = songs;
+      console.log("got songs!");
+
     }
   }
+
   console.log('Finished processing pairs.'); // Debug statement
 
   return pairData;
@@ -1777,25 +1821,35 @@ app.get('/artists', async function(req, res) {
   try {
 
     // uncomment if not using sample data
-     const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
+    const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
     console.log('Found pairs:', pairs); // Debug statement
     
     const processedPairs = await processPairs(pairs);
     console.log('Processed pairs:', processedPairs); // Debug statement 
 
-    sample_data = processedPairs;
+    //Logging API Usage Information
+    console.log(`Total Spotify API calls: ${apiCallCounter.total}`);
+    console.log(`Calls for similar artists: ${apiCallCounter.similarArtists}`);
+    console.log(`Calls for getting albums: ${apiCallCounter.getAlbums}`);
+    console.log(`Calls for getting songs: ${apiCallCounter.getSongs}`);
+    console.log(`Calls for getting top artists: ${apiCallCounter.getTopArtists}`);
+
+    //Uncomment the line below to use sample data rather than calling Spotify API for data 
+    //processedPairs = sample_data;
 
     const promises = [];
     for (let i = 0; i < 3; i++) {
-      let pairObject = sample_data[i]; // TODO: FIX LATER
-      // let pairObject = processedPairs[i]; // TODO: FIX LATER
+      //let pairObject = sample_data[i]; // TODO: FIX LATER
+      let pairObject = processedPairs[i]; // TODO: FIX LATER
+      console.log('pairObject: ' + pairObject);
 
       let pairObjKeys = Object.keys(pairObject);
+      console.log('pairObjectKeys: ' + pairObjKeys);
 
       var pairString = pairObject['pair']
       var genreString = pairObject['genres']
-      var artistOne = pairObjKeys[2];
-      var artistTwo = pairObjKeys[3];
+      var artistOne = pairString[0];
+      var artistTwo = pairString[1];
       // var artistOneSongs = getRandomItems(pairObject[artistOne],10);
       // var artistTwoSongs = getRandomItems(pairObject[artistTwo],10);
       artistOneSongs = pairObject[artistOne];

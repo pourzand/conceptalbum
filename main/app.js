@@ -1541,12 +1541,9 @@ async function callLLM(prompt,pairString) {
   
   //console.log(result["content"]);
   //console.log("done?");
-<<<<<<< HEAD
-  return result["content"];
-=======
+
   console.log("done with singular callLLM function call");
   return pairString + "\n" + result["content"];
->>>>>>> c36a261752276411c0751b0a3a4f0a9741b13bda
 }
 
 // Function to fetch similar artists with caching and prioritize by popularity
@@ -1855,18 +1852,12 @@ app.get('/artists', async function(req, res) {
       var genreString = pairObject['genres']
       var artistOne = pairString[0];
       var artistTwo = pairString[1];
-<<<<<<< HEAD
-      // var artistOneSongs = getRandomItems(pairObject[artistOne],10);
-      // var artistTwoSongs = getRandomItems(pairObject[artistTwo],10);
-      artistOneSongs = pairObject[artistOne];
-      artistTwoSongs = pairObject[artistTwo];
-=======
+
       var numSongsForPrompt = 20;
       var artistOneSongs = getRandomItems(pairObject[artistOne],numSongsForPrompt);
       var artistTwoSongs = getRandomItems(pairObject[artistTwo],numSongsForPrompt);
       // artistOneSongs = pairObject[artistOne];
       // artistTwoSongs = pairObject[artistTwo];
->>>>>>> c36a261752276411c0751b0a3a4f0a9741b13bda
       console.log("pair string " + pairString);
       console.log("genre string " + genreString);
       // console.log("artist one " + artistOneSongs); // Debug

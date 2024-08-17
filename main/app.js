@@ -1522,7 +1522,7 @@ function getRandomItems(arr, numItems) {
   return arr.sort(() => 0.5 - Math.random()).slice(0, numItems);
 }
 
-async function callLLM(prompt) {
+async function callLLM(prompt,pairString) {
   // Hardcoded for now, future use dotenv
   var geminiApiKey = "AIzaSyB4N79Wwr8QfI6FKSeeGkPwhCqZoPmJwqg";
   const llm = new ChatGoogleGenerativeAI({
@@ -1541,7 +1541,12 @@ async function callLLM(prompt) {
   
   //console.log(result["content"]);
   //console.log("done?");
+<<<<<<< HEAD
   return result["content"];
+=======
+  console.log("done with singular callLLM function call");
+  return pairString + "\n" + result["content"];
+>>>>>>> c36a261752276411c0751b0a3a4f0a9741b13bda
 }
 
 // Function to fetch similar artists with caching and prioritize by popularity
@@ -1813,9 +1818,9 @@ app.get('/login', function(req, res) {
 });
 
 // TODO: In Development
-// app.get('/results', (req, res) => {
-//   res.sendFile(__dirname + '/public/results.html');
-// });
+app.get('/results', (req, res) => {
+  res.sendFile(__dirname + '/public/results.html');
+});
 
 app.get('/artists', async function(req, res) {
   try {
@@ -1850,20 +1855,27 @@ app.get('/artists', async function(req, res) {
       var genreString = pairObject['genres']
       var artistOne = pairString[0];
       var artistTwo = pairString[1];
+<<<<<<< HEAD
       // var artistOneSongs = getRandomItems(pairObject[artistOne],10);
       // var artistTwoSongs = getRandomItems(pairObject[artistTwo],10);
       artistOneSongs = pairObject[artistOne];
       artistTwoSongs = pairObject[artistTwo];
+=======
+      var numSongsForPrompt = 20;
+      var artistOneSongs = getRandomItems(pairObject[artistOne],numSongsForPrompt);
+      var artistTwoSongs = getRandomItems(pairObject[artistTwo],numSongsForPrompt);
+      // artistOneSongs = pairObject[artistOne];
+      // artistTwoSongs = pairObject[artistTwo];
+>>>>>>> c36a261752276411c0751b0a3a4f0a9741b13bda
       console.log("pair string " + pairString);
       console.log("genre string " + genreString);
-      console.log("artist one " + artistOneSongs); // Debug
+      // console.log("artist one " + artistOneSongs); // Debug
       
-      //var prompt = "You are a music industry executive. Your job is when provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+"'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual albu. You response should only include a title for this project and a numbered list of the songs and their features if any. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should never exceed 24 at most, however you can decide the number of songs less than this at your own discretion. Try to avoid to copying and reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. ";
-      var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual albu. You response should only include a title for this project and a numbered list of the songs and their features if any. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should never exceed 24 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. ";
-      //var prompt = "You are a music industry executive. Your job is when provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+"'s existing songs: "+artistOneSongs +". Here are alos some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual albu. You response should only include a title for this project and a numbered list of the songs and their features if any. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should never exceed 24 at most, however you can decide the number of songs less than this at your own discretion. Try to avoid to copying and reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. ";
-      //var prompt = "You are a music industry executive. Your job is when provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+"'s existing songs: "+artistOneSongs +". Here are alos some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual albu. You response should only include a title for this project and a numbered list of the songs and their features if any. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should never exceed 24 at most, however you can decide the number of songs less than this at your own discretion. Try to avoid to copying and reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. ";
-      console.log(prompt);
-      promises.push(callLLM(prompt));
+      var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
+
+      // console.log(prompt);
+      promises.push(callLLM(prompt,pairString));
+
     }
 
     const responses = await Promise.all(promises);

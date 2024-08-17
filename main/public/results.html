@@ -84,6 +84,10 @@
             height: 100%;
             background-color: #60A5FA;
         }
+        /* uncomment below to disable the button overlaying runtimes */
+        /* .song-runtime {
+            padding-right: 0.75em; // or like 24pxs
+        } */
     </style>
 </head>
 <body class="bg-gray-900 text-white">
@@ -92,13 +96,15 @@
             <!-- sidebar left -->
         </div>
 
-        <div class="w-3/5 p-8 ml-[20%]">
+        <div class="w-3/5 p-8 ml-[20%] mb-24">
             <h1 class="text-4xl font-bold mb-8 text-center">Concept Album Results</h1>
             <div id="loading" class="text-center text-2xl">Loading...</div>
 
             <div id="albumContent" class="hidden">
+                <!-- album header area -->
                 <div class="flex mb-8">
                     <div class="w-64 h-64 bg-gray-700 mr-8">
+                        <!-- album cover placeholder -->
                     </div>
                     <div>
                         <h2 id="albumTitle" class="text-3xl font-bold mb-2"></h2>
@@ -106,7 +112,8 @@
                     </div>
                 </div>
 
-                <div id="songList" class="space-y-2 pl-0.5"></div>
+                <!-- Song list -->
+                <div id="songList" class="space-y-2"></div>
             </div>
         </div>
 
@@ -194,7 +201,7 @@
                     <div class="flex-grow">
                         <p class="font-semibold">${track_details[0]}</p>
                     </div>
-                    <span class="text-gray-400">3:30</span>
+                    <span class="text-gray-400 song-runtime">3:30</span>
                 `;
                 // Add event listeners for tooltip
                 songElement.addEventListener('mouseenter', (e) => {

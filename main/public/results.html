@@ -41,11 +41,11 @@
             cursor: not-allowed;
         }
         #prevButton {
-            left: 0;
+            left: 20%;
             border-radius: 0 8px 8px 0;
         }
         #nextButton {
-            right: 0;
+            right: 20%;
             border-radius: 8px 0 0 8px;
         }
         .player-bar {
@@ -98,6 +98,12 @@
             .side-button {
                 width: 40px;
                 height: 80px;
+            }
+            #prevButton {
+                left: 0%;
+            }
+            #nextButton {
+                right: 0%;
             }
         }
     </style>
@@ -198,45 +204,58 @@
         }
 
         function displayAlbum() {
+            // llm repition prevention
+            const songNames = new Map();
+
+            const songMax = 22; // the maximum number of songs that can be displayed in the event the llm doesnt properly following instructions
+            var trueNumSongs = 0;
             const albumData = parseAlbumResponse(contentResponses[currentIndex]);
             
             document.getElementById('albumTitle').textContent = albumData.title.slice(1, -1);
-            const artists =  albumData.pair.split(",");
+            const artists =  albumData.pair.split("`"); // Cross reference with uniqueDelim in callLLM in app.js to make sure this functions properly
 
-            document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${albumData.tracks.length} songs`;
 
             const songList = document.getElementById('songList');
             songList.innerHTML = '';
             albumData.tracks.forEach((track, index) => {
                 const track_details = track.split("|");
-                
-                const songElement = document.createElement('div');
-                songElement.className = 'flex items-center p-2 hover:bg-gray-800 rounded';
-                songElement.innerHTML = `
-                    <span class="w-8 text-right mr-4 text-gray-400">${index + 1}</span>
-                    <div class="flex-grow">
-                        <p class="font-semibold">${track_details[0]}</p>
-                    </div>
-                    <span class="text-gray-400 song-runtime">3:30</span>
-                `;
-                // Add event listeners for tooltip
-                songElement.addEventListener('mouseenter', (e) => {
-                    const tooltip = document.createElement('div');
-                    tooltip.className = 'tooltip';
-                    tooltip.textContent = track_details[1] || 'No description available';
-                    tooltip.style.left = `${e.pageX + 10}px`;
-                    tooltip.style.top = `${e.pageY + 10}px`;
-                    document.body.appendChild(tooltip);
-                });
+                // check to see if song already exists in map, if so dont display
+                if(!(songNames.has(track_details[0])) && index < songMax) {
+                    trueNumSongs++;
+                    // since song doesn't exist, add to map
+                    songNames.set(track_details[0], track_details[1]);
+                    
+                    const songElement = document.createElement('div');
+                    songElement.className = 'flex items-center p-2 hover:bg-gray-800 rounded';
+                    songElement.innerHTML = `
+                        <span class="w-8 text-right mr-4 text-gray-400">${index + 1}</span>
+                        <div class="flex-grow">
+                            <p class="font-semibold">${track_details[0]}</p>
+                        </div>
+                        <span class="text-gray-400 song-runtime">3:30</span>
+                    `;
+                    // Add event listeners for tooltip
+                    songElement.addEventListener('mouseenter', (e) => {
+                        const tooltip = document.createElement('div');
+                        tooltip.className = 'tooltip';
+                        tooltip.textContent = track_details[1] || 'No description available';
+                        tooltip.style.left = `${e.pageX + 10}px`;
+                        tooltip.style.top = `${e.pageY + 10}px`;
+                        document.body.appendChild(tooltip);
+                    });
 
-                songElement.addEventListener('mouseleave', () => {
-                    const tooltip = document.querySelector('.tooltip');
-                    if (tooltip) {
-                        tooltip.remove();
-                    }
-                });
-                songList.appendChild(songElement);
+                    songElement.addEventListener('mouseleave', () => {
+                        const tooltip = document.querySelector('.tooltip');
+                        if (tooltip) {
+                            tooltip.remove();
+                        }
+                    });
+                    songList.appendChild(songElement);
+                } 
             });
+
+            document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${trueNumSongs} songs`;
+
 
             albumContent.classList.remove('hidden');
             updateNavigation();
@@ -268,7 +287,24 @@
                 displayAlbum();
             } catch (error) {
                 console.error('Error fetching data:', error);
-                loading.textContent = 'Error loading data. Please try again later.';
+                
+                loading.innerHTML = '';
+                
+                const errorMessage = document.createElement('p');
+                errorMessage.textContent = 'Error loading data. Please try again later.';
+                errorMessage.className = 'text-center text-2xl mb-4';
+                loading.appendChild(errorMessage);
+                
+                const homeButton = document.createElement('button');
+                homeButton.textContent = 'Go to Home Page';
+                homeButton.className = 'block mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300';
+                homeButton.addEventListener('click', () => {
+                    window.location.href = window.location.origin;
+                });
+                
+                loading.appendChild(homeButton);
+                
+                loading.classList.remove('hidden');
             }
         }
 

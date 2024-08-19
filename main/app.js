@@ -1517,12 +1517,62 @@ var sample_data = [
 ];
 
 
-
 function getRandomItems(arr, numItems) {
   return arr.sort(() => 0.5 - Math.random()).slice(0, numItems);
 }
 
-async function callLLM(prompt,pairString) {
+// kept getting: Error: TypeError: firstArtistSet.intersection is not a function
+// so i manually defined it here via mozilla docs
+function intersection_def(setA, setB) {
+  const _intersection = new Set();
+  for (const elem of setB) {
+    if (setA.has(elem)) {
+      _intersection.add(elem);
+    }
+  }
+  return _intersection;
+}
+
+function basicSimilarityMatch(response,artistOneSongs,artistTwoSongs) {
+
+  // TODO: didnt yet add feature removal from spotify song title since few contain them
+
+  // runtime could maybe be better if i parallelized the iterating during the parsing process on results.html by passing the list of songs for every artist for every album(6 song lists) but that might just be more work
+  // but in theory shouldnt be ran when deployed, just for debugging
+  const lines = response.split('\n');
+  const pair = lines[0].trim();
+  const title = lines[1].trim();
+ 
+  const tracks = lines.slice(2).map(line => line.split("|")[0]).map(line => {
+    const index = line.indexOf('(');  // find the position of '('
+    return index !== -1 ? line.slice(0, index-1) : line;  // Keep everything before '(' to remove features when song title matching
+  }).filter(line => line !== '');  // Filter out empty lines
+
+  const firstArtistSet = new Set(artistOneSongs.map(item => item.toLowerCase()));
+  const secondArtistSet = new Set(artistTwoSongs.map(item => item.toLowerCase()));
+  const tracksSet = new Set(tracks.map(item => item.toLowerCase()));
+
+  // built in intersection not supported for some reason
+  // const firstOverlap = (firstArtistSet.intersection(tracksSet)).size / firstArtistSet.size;
+  // const secondOverlap = (secondArtistSet.intersection(tracksSet)).size / secondArtistSet.size;
+
+  const firstOverlap = (intersection_def(firstArtistSet,tracksSet)).size / firstArtistSet.size;
+  const secondOverlap = (intersection_def(secondArtistSet,tracksSet)).size / secondArtistSet.size;
+  const artists =  pair.split("`"); // Cross reference with uniqueDelim in callLLM
+
+  console.log("Songs Titles DIRECTLY Copied:\n"+artists[0]+": " + (firstOverlap * 100)+ "%\n" + artists[1] + ": " + (100* secondOverlap)+"%");
+  // Does not account for instances where the LLM will concatenate song titles together because those are harder to detect and to a degree, concatenating them is creative to an extent. 
+
+  // debug statements
+  // console.log(artists[0] ," INTERSECTION: " ,intersection_def(firstArtistSet,tracksSet) );
+  // console.log(artists[1] ," INTERSECTION: " ,(intersection_def(secondArtistSet,tracksSet)) );
+  // console.log(artists[0]," PARSED: ",firstArtistSet );
+  // console.log(artists[1]," PARSED: ", secondArtistSet);
+  // console.log("trackset: ", tracksSet);
+
+}
+
+async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs) {
   // Hardcoded for now, future use dotenv
   var geminiApiKey = "AIzaSyB4N79Wwr8QfI6FKSeeGkPwhCqZoPmJwqg";
   const llm = new ChatGoogleGenerativeAI({
@@ -1532,6 +1582,10 @@ async function callLLM(prompt,pairString) {
     temperature: 0,
     maxRetries: 2,
   });
+
+  // prompt creation
+  var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artists[0] + " and " + artists[1] +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artists[0]+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artists[1]+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
+
   const result = await llm.invoke([
     [
       "system",
@@ -1539,11 +1593,23 @@ async function callLLM(prompt,pairString) {
     ]
   ]);
   
-  //console.log(result["content"]);
-  //console.log("done?");
+  // DEBUG STATEMENTS
+
+  // console.log("DEBUG_PROMPT:<" , prompt, ">DEBUG_PROMPT");
 
   console.log("done with singular callLLM function call");
-  return pairString + "\n" + result["content"];
+  const uniqueDelim = "`"; // the purpose for this is just appending the array will sepearte the artists with a comma and when we go to split
+  // ,artists with commas or typical punctation in their names will be split at the wrong spots, for now using a backtick but could use some crazy unique combo of characters if we wanted to be super robust in our solution.
+  const formattedResult = artists[0] + uniqueDelim + artists[1]+ "\n" + result["content"];
+
+
+  // console.log("DEBUG_RESULT:< ", formattedResult,">DEBUG_RESULT");
+
+  console.log("DEBUG_COPIED_SONGS:<");
+  basicSimilarityMatch(formattedResult,artistOneSongs,artistTwoSongs);
+  console.log(">DEBUG_COPIED_SONGS");
+
+  return formattedResult;
 }
 
 // Function to fetch similar artists with caching and prioritize by popularity
@@ -1734,7 +1800,7 @@ async function getAllSongs(artistId, popularity) {
   try {
     const albums = await fetchAlbums(artistId);
     const allTracksSet = new Set();
-    console.log("ALBUMS: " + albums);
+    console.log("ALBUMS: " , albums);
 
     for (const album of albums) {
       const tracks = await fetchTracks(album.id, artistId);
@@ -1766,7 +1832,7 @@ async function getAllSongs(artistId, popularity) {
 async function processPairs(pairData) {
   for (let i = 0; i < pairData.length; i++) {
     var pair = pairData[i];
-    console.log("pair: " + pair);
+    console.log("pair: " , pair);
     for (let i = 0; i < 2; i++) {
       var artistName = pair.pair[i];
       console.log("artist name: " + artistName);
@@ -1848,24 +1914,24 @@ app.get('/artists', async function(req, res) {
       let pairObjKeys = Object.keys(pairObject);
       console.log('pairObjectKeys: ' + pairObjKeys);
 
-      var pairString = pairObject['pair']
+      var pairArray = pairObject['pair']
       var genreString = pairObject['genres']
-      var artistOne = pairString[0];
-      var artistTwo = pairString[1];
+      var artistOne = pairArray[0];
+      var artistTwo = pairArray[1];
 
       var numSongsForPrompt = 20;
       var artistOneSongs = getRandomItems(pairObject[artistOne],numSongsForPrompt);
       var artistTwoSongs = getRandomItems(pairObject[artistTwo],numSongsForPrompt);
       // artistOneSongs = pairObject[artistOne];
       // artistTwoSongs = pairObject[artistTwo];
-      console.log("pair string " + pairString);
+      console.log("pair string " + pairArray);
       console.log("genre string " + genreString);
       // console.log("artist one " + artistOneSongs); // Debug
       
-      var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
+      // var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
 
       // console.log(prompt);
-      promises.push(callLLM(prompt,pairString));
+      promises.push(callLLM(pairArray, genreString,artistOneSongs,artistTwoSongs));
 
     }
 

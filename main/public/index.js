@@ -63,9 +63,6 @@ function init() {
     "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQq0dH404LfbpA1JVfrurfLqXdcStsy2rDYQg&s",
     "https://upload.wikimedia.org/wikipedia/en/b/ba/Radioheadokcomputer.png",
 
-
-
-
   ];
 
   album_urls.forEach(url => {
@@ -76,13 +73,26 @@ function init() {
   // var geometry = new THREE.BoxGeometry(100, 100, 100); // album cubes
 
   var material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+  // var sidemat = new THREE.MeshBasicMaterial({color: 0xffffff});
+  var sidemat = new THREE.MeshBasicMaterial({color: 0x000000});
+
+
 
   group = new THREE.Group();
   for (var i = 0; i < 500; i++) {
     var texture = textures[Math.floor(Math.random() * textures.length)];
     var image = new THREE.MeshBasicMaterial({ map: texture });
+    var materialNew = [
+      sidemat,
+      sidemat,
+      sidemat,
+      sidemat,
+      image,
+      image,
+    ];
 
-    var mesh = new THREE.Mesh(geometry, image);
+
+    var mesh = new THREE.Mesh(geometry, materialNew);
     mesh.position.x = Math.random() * 2000 - 1000;
     mesh.position.y = Math.random() * 2000 - 1000;
     mesh.position.z = Math.random() * 2000 - 1000;

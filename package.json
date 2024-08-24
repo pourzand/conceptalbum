@@ -11,6 +11,7 @@
     "express": "~4.16.0",
     "node-fetch": "^3.3.2",
     "querystring": "~0.2.0",
-    "request": "~2.83.0"
+    "request": "~2.83.0",
+    "three": "^0.167.1"
   }
 }

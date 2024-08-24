@@ -1296,23 +1296,83 @@ function intersection_def(setA, setB) {
   return _intersection;
 }
 
-function basicSimilarityMatch(response,artistOneSongs,artistTwoSongs) {
+function removeIntersection(setA, setB) {
+  const intersectionSet = intersection_def(setA, setB);
+  
+  for (const elem of intersectionSet) {
+    setB.delete(elem);
+  }
+  
+  return setB;
+}
 
-  // TODO: didnt yet add feature removal from spotify song title since few contain them
+function responseParsing(response,artistOneSongs,artistTwoSongs) {
+  const lines = response.split('\n');
+  // console.log(lines);
+  const pair = lines[0].trim();
+  const title = lines[1].trim();
+  const tracks = lines.slice(2).map(line => line.trim()).filter(line => line !== '');
+  
+  // llm repition prevention
+  const songNames = new Set();
+  let reachedSongMax = false;
+
+  const songMax = 22; // the maximum number of songs that can be displayed in the event the llm doesnt properly following instructions
+
+  // runtime techinically suffers because we are iterating over the the generate tracklist twice instead of once on the client side but will hopefully make things easier for reptition prevention
+  
+  // using filter since it unadvisable to iterate over something while removing from it at the same time.
+  const non_repeat_tracks = tracks.filter((track, index) => {
+    if (reachedSongMax) return false;
+  
+    const track_details = track.split("|");
+    const songName = track_details[0];
+  
+    if (songNames.has(songName)) {
+      return false;
+    } else if (index < songMax) {
+      songNames.add(songName);
+      return true;
+    } else {
+      // We've reached songMax
+      reachedSongMax = true;
+      return false;
+    }
+  });
+
+  not_direct_copies = basicSimilarityMatch(non_repeat_tracks, pair,artistOneSongs,artistTwoSongs);
+
+  // console.log("In Response Parsing: ", {title , non_repeat_tracks , pair })
+  // TODO replace with non_direct_copies
+  return {title , non_repeat_tracks , pair }
+
+}
+
+
+function basicSimilarityMatch(non_repeat_tracks, pair , artistOneSongs,artistTwoSongs) {
+
 
   // runtime could maybe be better if i parallelized the iterating during the parsing process on results.html by passing the list of songs for every artist for every album(6 song lists) but that might just be more work
   // but in theory shouldnt be ran when deployed, just for debugging
-  const lines = response.split('\n');
-  const pair = lines[0].trim();
-  const title = lines[1].trim();
+  // const lines = response.split('\n');
+  // const pair = lines[0].trim();
+  // const title = lines[1].trim();
  
-  const tracks = lines.slice(2).map(line => line.split("|")[0]).map(line => {
+  const tracks = non_repeat_tracks.map(line => line.split("|")[0]).map(line => { // discard track description
     const index = line.indexOf('(');  // find the position of '('
     return index !== -1 ? line.slice(0, index-1) : line;  // Keep everything before '(' to remove features when song title matching
   }).filter(line => line !== '');  // Filter out empty lines
 
-  const firstArtistSet = new Set(artistOneSongs.map(item => item.toLowerCase()));
-  const secondArtistSet = new Set(artistTwoSongs.map(item => item.toLowerCase()));
+  const firstArtistSet = new Set(artistOneSongs.map(line => {
+    const index = line.indexOf('(');  // find the position of '('
+    return index !== -1 ? line.slice(0, index-1) : line;  // keep everything before '(' to remove features when song title matching
+  }).map(item => item.toLowerCase()));
+
+  const secondArtistSet = new Set(artistTwoSongs.map(line => {
+    const index = line.indexOf('(');  // find the position of '('
+    return index !== -1 ? line.slice(0, index-1) : line;  // keep everything before '(' to remove features when song title matching
+  }).map(item => item.toLowerCase()));
+
   const tracksSet = new Set(tracks.map(item => item.toLowerCase()));
 
   // built in intersection not supported for some reason
@@ -1333,16 +1393,37 @@ function basicSimilarityMatch(response,artistOneSongs,artistTwoSongs) {
   // console.log(artists[1]," PARSED: ", secondArtistSet);
   // console.log("trackset: ", tracksSet);
 
+  // NEW 
+  // removing direct copies
+  firstArtistRemoved = removeIntersection(firstArtistSet,tracksSet) // tracks - first artist copies
+  bothArtistRemoved = removeIntersection(secondArtistSet,firstArtistRemoved) // tracks - first artist copies - second artist copies
+
+  // TODO: re-add descriptions since current tracks are stripped.
+  // foreach item in final set, if substring is present, add to some array or remove from existing array and then return
+  // cleanedTracks = Array.from(bothArtistRemoved.values());
+  let cleanedTracks = non_repeat_tracks.filter(track => {
+    let trackName = track.split("|")[0].trim();
+    let index = trackName.indexOf('(');
+    let cleanedTrackName = index !== -1 ? trackName.slice(0, index - 1) : trackName;
+    return bothArtistRemoved.has(cleanedTrackName.toLowerCase());
+  });
+
+  console.log("TOTALLY CLEANED: ",cleanedTracks);
+
+  return cleanedTracks;
+
 }
+
+
 
 async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs) {
   // Hardcoded for now, future use dotenv
   var geminiApiKey = "AIzaSyB4N79Wwr8QfI6FKSeeGkPwhCqZoPmJwqg";
   const llm = new ChatGoogleGenerativeAI({
     apiKey: geminiApiKey,
-    // model: "gemini-1.5-flash", # Initial responses were based on PRO
-    model: "gemini-1.5-pro",
-    temperature: 0,
+    model: "gemini-1.5-flash", // Initial responses were based on PRO
+    // model: "gemini-1.5-pro",
+    temperature: .2,
     maxRetries: 2,
   });
 
@@ -1369,11 +1450,13 @@ async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs) {
   // console.log("DEBUG_RESULT:< ", formattedResult,">DEBUG_RESULT");
 
   console.log("DEBUG_COPIED_SONGS:<");
-  basicSimilarityMatch(formattedResult,artistOneSongs,artistTwoSongs);
+  // basicSimilarityMatch(formattedResult
   console.log(">DEBUG_COPIED_SONGS");
 
-  return formattedResult;
+  return responseParsing(formattedResult,artistOneSongs,artistTwoSongs);
 }
+
+
 
 // Function to fetch similar artists with caching and prioritize by popularity
 async function fetchSimilarArtists(artistId, popularity) {
@@ -1741,6 +1824,7 @@ app.get('/artists', async function(req, res) {
     }
 
     const responses = await Promise.all(promises);
+    console.log("DEBUG RESPONSE: " , responses)
 
     // const contentResponses = responses.map(response => ({ content: response.content }));
     res.json(responses);

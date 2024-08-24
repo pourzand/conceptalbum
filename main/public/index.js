@@ -1,6 +1,6 @@
 // import * as THREE from 'three';
 // DEBUG IMPORT
-import * as THREE from "../../node_modules/three/build/three.module.js";
+import * as THREE from "https://unpkg.com/three@0.167.1/build/three.module.js";
 
 var camera, scene, renderer;
 var geometry, group;
@@ -25,27 +25,56 @@ function init() {
   );
   camera.position.z = 1500;
   scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x2b2b2b);
-  scene.fog = new THREE.Fog(0x2b2b2b, 1, 10000);
+  // scene.background = new THREE.Color(0x2b2b2b);
+  scene.background = new THREE.Color(0x000000);
+
+  scene.fog = new THREE.Fog(0x000000, 1, 10000);
 
   // Load textures
 
   var loader = new THREE.TextureLoader();
 
-  textures.push(loader.load('https://upload.wikimedia.org/wikipedia/en/c/c6/Die_Lit_by_Playboi_Carti.jpg'));
-  textures.push(loader.load('https://upload.wikimedia.org/wikipedia/en/6/6c/Playboi_Carti_-_Whole_Lotta_Red.png'));
-  textures.push(
-    loader.load(
-      'https://upload.wikimedia.org/wikipedia/en/1/14/Inrainbowscover.png'
-    )
-  );
-  textures.push(
-    loader.load(
-      'https://upload.wikimedia.org/wikipedia/en/2/26/Daft_Punk_-_Random_Access_Memories.png'
-    )
-  );
+  var album_urls = [
+    "https://upload.wikimedia.org/wikipedia/commons/6/60/Charli_XCX_-_Brat_%28album_cover%29.png",
+    "https://upload.wikimedia.org/wikipedia/en/c/c6/Die_Lit_by_Playboi_Carti.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/6/6c/Playboi_Carti_-_Whole_Lotta_Red.png",
+    "https://upload.wikimedia.org/wikipedia/en/1/14/Inrainbowscover.png",
+    "https://upload.wikimedia.org/wikipedia/en/2/26/Daft_Punk_-_Random_Access_Memories.png",
+    "https://upload.wikimedia.org/wikipedia/en/2/28/Channel_ORANGE.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/a/a0/Blonde_-_Frank_Ocean.jpeg",
+    "https://upload.wikimedia.org/wikipedia/en/7/70/Graduation_%28album%29.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/f/f4/Late_registration_cd_cover.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/a/a3/Kanyewest_collegedropout.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/4/42/Drake_-_Nothing_Was_the_Same_cover.png",
+    "https://upload.wikimedia.org/wikipedia/en/thumb/a/ae/Drake_-_Take_Care_cover.jpg/220px-Drake_-_Take_Care_cover.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/4/4b/Travis_Scott_-_Astroworld.png",
+    "https://m.media-amazon.com/images/I/71RDpVmr2hL._UF1000,1000_QL80_.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/b/b9/Freudian_by_Daniel_Caesar.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/4/4c/Daniel_Caesar_-_Case_Study_01.png",
+    "https://upload.wikimedia.org/wikipedia/en/4/4b/My_Bloody_Valentine_-_Loveless.png",
+    "https://upload.wikimedia.org/wikipedia/en/5/56/Clairo_-_Immunity.png",
+    "https://i.scdn.co/image/ab67616d0000b27313f2466b83507515291acce4",
+    "https://i.scdn.co/image/ab67616d0000b27371f8b254f302d09364879e65",
+    "https://upload.wikimedia.org/wikipedia/en/5/51/Igor_-_Tyler%2C_the_Creator.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/2/21/Deftones_-_Around_the_Fur.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/8/8b/Deftones_-_Diamond_Eyes.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/8/8e/The_Ooz_King_Krule.jpg",
+    "https://upload.wikimedia.org/wikipedia/en/2/20/PinkPantheress_-_Heaven_Knows.png",
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQq0dH404LfbpA1JVfrurfLqXdcStsy2rDYQg&s",
+    "https://upload.wikimedia.org/wikipedia/en/b/ba/Radioheadokcomputer.png",
 
-  var geometry = new THREE.BoxBufferGeometry(150, 150, 10);
+
+
+
+  ];
+
+  album_urls.forEach(url => {
+    textures.push(loader.load(url))
+  });
+
+  var geometry = new THREE.BoxGeometry(150, 150, 15);
+  // var geometry = new THREE.BoxGeometry(100, 100, 100); // album cubes
+
   var material = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
 
   group = new THREE.Group();
@@ -66,7 +95,6 @@ function init() {
 
   scene.add(group);
   renderer = new THREE.WebGLRenderer({ antialias: true });
-  // renderer.setClearColor( 0xfff );
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
   document.body.appendChild(renderer.domElement);

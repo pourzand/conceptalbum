@@ -12,6 +12,7 @@ var windowHalfY = window.innerHeight / 2;
 // Array to hold our textures
 
 var textures = [];
+var meshes = [];
 
 init();
 animate();
@@ -118,6 +119,8 @@ function init() {
 
 
   ];
+  
+
 
   album_urls.forEach(url => {
     textures.push(loader.load(url))
@@ -152,9 +155,11 @@ function init() {
     mesh.position.z = Math.random() * 2000 - 1000;
     mesh.rotation.x = Math.random() * 2 * Math.PI;
     mesh.rotation.y = Math.random() * 2 * Math.PI;
-    mesh.matrixAutoUpdate = false;
-    mesh.updateMatrix();
+    // mesh.matrixAutoUpdate = false;
+    // mesh.updateMatrix();
     group.add(mesh);
+    meshes.push(mesh); // Store the mesh in our array
+
   }
 
   scene.add(group);
@@ -182,7 +187,28 @@ function onDocumentMouseMove(event) {
 
 function animate() {
   requestAnimationFrame(animate);
+  updateMeshes(); // Add this line to update mesh positions
   render();
+}
+
+function updateMeshes() {
+  var time = Date.now() * 0.001;
+  meshes.forEach((mesh, index) => {
+    // Create a unique movement for each mesh based on its index
+    mesh.position.x += Math.sin(time + index * 0.1) * 0.5;
+    mesh.position.y += Math.cos(time + index * 0.1) * 0.5;
+    mesh.position.z += Math.sin(time + index * 0.2) * 0.5;
+    
+    // // Rotate the mesh slightly
+    // mesh.rotation.x += 0.01;
+    // mesh.rotation.y += 0.01;
+    
+    // Slow down the rotation
+    mesh.rotation.x += 0.002;
+    mesh.rotation.y += 0.002;
+
+
+  });
 }
 
 function render() {

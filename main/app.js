@@ -1343,8 +1343,9 @@ function responseParsing(response,artistOneSongs,artistTwoSongs) {
   not_direct_copies = basicSimilarityMatch(non_repeat_tracks, pair,artistOneSongs,artistTwoSongs);
 
   // console.log("In Response Parsing: ", {title , non_repeat_tracks , pair })
-  // TODO replace with non_direct_copies
-  return {title , non_repeat_tracks , pair }
+  finalized_tracks = not_direct_copies;
+  // TO DISABLE DIRECT COPY REMOVAL, replace above with "finalized_tracks = non_repeat_tracks;"
+  return {title , finalized_tracks , pair };
 
 }
 

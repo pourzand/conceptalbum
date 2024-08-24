@@ -46,7 +46,7 @@
             padding: 5px 10px;
             border-radius: 4px;
             font-size: 14px;
-            z-index: 10;
+            z-index: 50;
             max-width: 50%;
             word-wrap: break-word;
         }
@@ -251,66 +251,53 @@
             }
         }
 
-        function parseAlbumResponse(response) {
-            const lines = response.split('\n');
-            console.log(lines);
-            const pair = lines[0].trim();
-            const title = lines[1].trim();
-            const tracks = lines.slice(2).map(line => line.trim()).filter(line => line !== '');
-            return { title, tracks, pair };
-        }
-
         function displayAlbum() {
-            // llm repetition prevention
-            const songNames = new Map();
-
-            const songMax = 22; // the maximum number of songs that can be displayed in the event the llm doesn't properly following instructions
-            var trueNumSongs = 0;
-            const albumData = parseAlbumResponse(contentResponses[currentIndex]);
             
+            // const albumData = parseAlbumResponse(contentResponses[currentIndex]);
+            const albumData = contentResponses[currentIndex];
+
             document.getElementById('albumTitle').textContent = albumData.title.slice(1, -1);
+
             const artists =  albumData.pair.split("`"); // Cross reference with uniqueDelim in callLLM in app.js to make sure this functions properly
+
 
             const songList = document.getElementById('songList');
             songList.innerHTML = '';
-            albumData.tracks.forEach((track, index) => {
+            albumData.finalized_tracks.forEach((track, index) => {
                 const track_details = track.split("|");
-                // check to see if song already exists in map, if so don't display
-                if(!(songNames.has(track_details[0])) && index < songMax) {
-                    trueNumSongs++;
-                    // since song doesn't exist, add to map
-                    songNames.set(track_details[0], track_details[1]);
-                    
-                    const songElement = document.createElement('div');
-                    songElement.className = 'song-element hover:bg-hover-bg rounded';
-                    songElement.innerHTML = `
-                        <span class="w-8 text-right mr-4 text-secondary-text">${index + 1}</span>
+                
+            
+                const songElement = document.createElement('div');
+                songElement.className = 'song-element hover:bg-hover-bg rounded';
+                songElement.innerHTML = `
+                    <span class="w-8 text-right mr-4 text-secondary-text">${index + 1}</span>
                         <div class="flex-grow">
                             <p class="font-normal">${track_details[0]}</p>
                         </div>
                         <span class="text-secondary-text song-runtime">3:30</span>
-                    `;
-                    // Add event listeners for tooltip
-                    songElement.addEventListener('mouseenter', (e) => {
-                        const tooltip = document.createElement('div');
-                        tooltip.className = 'tooltip';
-                        tooltip.textContent = track_details[1] || 'No description available';
-                        tooltip.style.left = `${e.pageX + 10}px`;
-                        tooltip.style.top = `${e.pageY + 10}px`;
-                        document.body.appendChild(tooltip);
-                    });
+                `;
+                // Add event listeners for tooltip
+                songElement.addEventListener('mouseenter', (e) => {
+                    const tooltip = document.createElement('div');
+                    tooltip.className = 'tooltip';
+                    tooltip.textContent = track_details[1] || 'No description available';
+                    tooltip.style.left = `${e.pageX + 10}px`;
+                    tooltip.style.top = `${e.pageY + 10}px`;
+                    document.body.appendChild(tooltip);
+                });
 
-                    songElement.addEventListener('mouseleave', () => {
-                        const tooltip = document.querySelector('.tooltip');
-                        if (tooltip) {
-                            tooltip.remove();
-                        }
-                    });
-                    songList.appendChild(songElement);
-                } 
+                songElement.addEventListener('mouseleave', () => {
+                    const tooltip = document.querySelector('.tooltip');
+                    if (tooltip) {
+                        tooltip.remove();
+                    }
+                });
+                songList.appendChild(songElement);
+            
             });
 
-            document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${trueNumSongs} songs`;
+            document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${albumData.finalized_tracks.length} songs`;
+
 
             albumContent.classList.remove('hidden');
             updateNavigation();

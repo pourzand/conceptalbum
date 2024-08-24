@@ -6,10 +6,43 @@
     <title>Concept Album Results</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        :root {
+            /* Primary Colors */
+            --primary-bg: #1e1e1e; /* Dark background */
+            --primary-text: #FFFFFF; /* Main text color */
+            --primary-accent: #e93424; /* Accent color (e.g., buttons, links) */
+            --primary-hover-accent: #da8396;
+            
+            /* Secondary Colors */
+            --secondary-bg: #140f0f; /* Secondary background (e.g., album cover, progress bar) */
+            --secondary-text: #9CA3AF; /* Secondary text color (e.g., details) */
+            --secondary-accent: #4b4b4b; /* Secondary accent (e.g., hovered buttons) */
+            
+            /* Misc Colors */
+            --tooltip-bg: rgba(0, 0, 0, 0.8);
+            --tooltip-text: #FFFFFF;
+            --disabled-bg: rgba(107, 114, 128, 0.8);
+            --hover-bg: #1555bb; /* Background color on hover */
+            --hover-text: #D1D5DB; /* Text color on hover */
+        }
+
+        body {
+            background-color: var(--primary-bg);
+        }
+
+        .hidden {
+            background-color: var(--secondary-bg);
+        }
+
+
+        #album-content {
+            background-color: var(--secondary-bg);
+        }
+
         .tooltip {
             position: absolute;
-            background-color: rgba(0, 0, 0, 0.8);
-            color: white;
+            background-color: var(--tooltip-bg);
+            color: var(--tooltip-text);
             padding: 5px 10px;
             border-radius: 4px;
             font-size: 14px;
@@ -17,12 +50,13 @@
             max-width: 50%;
             word-wrap: break-word;
         }
+
         .side-button {
             position: fixed;
             top: 50%;
             transform: translateY(-50%);
-            background-color: rgba(59, 130, 246, 0.8);
-            color: white;
+            background-color: var(--primary-accent);
+            color: var(--primary-text);
             width: 50px;
             height: 100px;
             display: flex;
@@ -33,91 +67,114 @@
             transition: background-color 0.3s;
             z-index: 40;
         }
+
         .side-button:hover {
-            background-color: rgba(37, 99, 235, 0.8);
+            background-color: var(--primary-hover-accent);
+            color: var(--hover-text);
         }
+
         .side-button:disabled {
-            background-color: rgba(107, 114, 128, 0.8);
+            background-color: var(--disabled-bg);
             cursor: not-allowed;
         }
+
         #prevButton {
             left: 20%;
             border-radius: 0 8px 8px 0;
         }
+
         #nextButton {
             right: 20%;
             border-radius: 8px 0 0 8px;
         }
+
         .player-bar {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            background-color: rgba(31, 41, 55, 0.95);
+            background-color: var(--primary-bg);
             padding: 10px 0;
             display: flex;
             justify-content: center;
             align-items: center;
             z-index: 50;
         }
+
         .player-controls {
             display: flex;
             align-items: center;
             gap: 20px;
         }
+
         .player-icon {
             cursor: pointer;
             transition: color 0.3s;
         }
+
         .player-icon:hover {
-            color: #60A5FA;
+            color: var(--primary-accent);
         }
+
         .progress-bar {
             position: absolute;
             bottom: 0;
             left: 0;
             right: 0;
             height: 4px;
-            background-color: #4B5563;
+            background-color: var(--secondary-bg);
         }
+
         .progress {
             width: 30%;
             height: 100%;
-            background-color: #60A5FA;
+            background-color: var(--primary-accent);
         }
-        .song-runtime {
-            padding-right: 16px;
-        }
+
         .album-cover {
             width: 100%;
             padding-bottom: 100%; /* this makes it square */
-            background-color: #4B5563;
+            background-color: var(--secondary-accent);
             position: relative;
         }
+
+        .song-element {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .song-element:hover {
+            background-color: var(--hover-bg);
+            color: var(--hover-text);
+        }
+
         @media (max-width: 768px) {
             .side-button {
                 width: 40px;
                 height: 80px;
             }
+
             #prevButton {
                 left: 0%;
             }
+
             #nextButton {
                 right: 0%;
             }
         }
     </style>
 </head>
-<body class="bg-gray-900 text-white">
+<body class="bg-primary-bg text-primary-text">
     <div class="flex flex-col md:flex-row">
-        <div class="hidden md:block w-1/5 bg-gray-800 h-screen p-4 fixed left-0 top-0 overflow-y-auto">
+        <div class="hidden md:block w-1/5 bg-secondary-bg h-screen p-4 fixed left-0 top-0 overflow-y-auto">
             <!-- sidebar left (hidden on mobile) -->
         </div>
 
         <!-- content: full width on mobile, adjusted for desktop -->
         <div class="w-full md:w-3/5 p-4 md:p-8 md:ml-[20%] mb-24">
-            <h1 class="text-3xl md:text-4xl font-bold mb-8 text-center">Concept Album Results</h1>
-            <div id="loading" class="text-center text-2xl">Loading...
+            <div id="loading" class="text-white	text-center text-2xl">Loading...
                 <!-- to insert ads here eventually -->
             </div>
 
@@ -128,17 +185,17 @@
                         <div class="album-cover"></div>
                     </div>
                     <div>
-                        <h2 id="albumTitle" class="text-2xl md:text-3xl font-bold mb-2"></h2>
-                        <p id="albumDetails" class="text-gray-400"></p>
+                        <h2 id="albumTitle" class="text-white text-2xl md:text-3xl font-bold mb-2"></h2>
+                        <p id="albumDetails" class="text-white text-secondary-text"></p>
                     </div>
                 </div>
 
                 <!-- songs -->
-                <div id="songList" class="space-y-2"></div>
+                <div id="songList" class="text-white space-y-2"></div>
             </div>
         </div>
 
-        <div class="hidden md:block w-1/5 bg-gray-800 h-screen p-4 fixed right-0 top-0 overflow-y-auto">
+        <div class="hidden md:block w-1/5 bg-secondary-bg h-screen p-4 fixed right-0 top-0 overflow-y-auto">
             <!-- sidebar right (hidden on mobile) -->
         </div>
     </div>
@@ -204,35 +261,34 @@
         }
 
         function displayAlbum() {
-            // llm repition prevention
+            // llm repetition prevention
             const songNames = new Map();
 
-            const songMax = 22; // the maximum number of songs that can be displayed in the event the llm doesnt properly following instructions
+            const songMax = 22; // the maximum number of songs that can be displayed in the event the llm doesn't properly following instructions
             var trueNumSongs = 0;
             const albumData = parseAlbumResponse(contentResponses[currentIndex]);
             
             document.getElementById('albumTitle').textContent = albumData.title.slice(1, -1);
             const artists =  albumData.pair.split("`"); // Cross reference with uniqueDelim in callLLM in app.js to make sure this functions properly
 
-
             const songList = document.getElementById('songList');
             songList.innerHTML = '';
             albumData.tracks.forEach((track, index) => {
                 const track_details = track.split("|");
-                // check to see if song already exists in map, if so dont display
+                // check to see if song already exists in map, if so don't display
                 if(!(songNames.has(track_details[0])) && index < songMax) {
                     trueNumSongs++;
                     // since song doesn't exist, add to map
                     songNames.set(track_details[0], track_details[1]);
                     
                     const songElement = document.createElement('div');
-                    songElement.className = 'flex items-center p-2 hover:bg-gray-800 rounded';
+                    songElement.className = 'song-element hover:bg-hover-bg rounded';
                     songElement.innerHTML = `
-                        <span class="w-8 text-right mr-4 text-gray-400">${index + 1}</span>
+                        <span class="w-8 text-right mr-4 text-secondary-text">${index + 1}</span>
                         <div class="flex-grow">
-                            <p class="font-semibold">${track_details[0]}</p>
+                            <p class="font-normal">${track_details[0]}</p>
                         </div>
-                        <span class="text-gray-400 song-runtime">3:30</span>
+                        <span class="text-secondary-text song-runtime">3:30</span>
                     `;
                     // Add event listeners for tooltip
                     songElement.addEventListener('mouseenter', (e) => {
@@ -255,7 +311,6 @@
             });
 
             document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${trueNumSongs} songs`;
-
 
             albumContent.classList.remove('hidden');
             updateNavigation();
@@ -297,7 +352,7 @@
                 
                 const homeButton = document.createElement('button');
                 homeButton.textContent = 'Go to Home Page';
-                homeButton.className = 'block mx-auto bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded transition duration-300';
+                homeButton.className = 'block mx-auto bg-primary-accent hover:bg-primary-hover-accent text-primary-text font-bold py-2 px-4 rounded transition duration-300';
                 homeButton.addEventListener('click', () => {
                     window.location.href = window.location.origin;
                 });

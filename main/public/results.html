@@ -213,7 +213,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6 player-icon">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 16.811c0 .864-.933 1.405-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953l7.108-4.062A1.125 1.125 0 0121 8.688v8.123zM11.25 16.811c0 .864-.933 1.405-1.683.977l-7.108-4.062a1.125 1.125 0 010-1.953L9.567 7.71a1.125 1.125 0 011.683.977v8.123z" />
             </svg>
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 player-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-8 h-8 player-icon" id="share-button">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" />
             </svg>
@@ -234,6 +234,7 @@
         const loading = document.getElementById('loading');
         const prevButton = document.getElementById('prevButton');
         const nextButton = document.getElementById('nextButton');
+        const shareButton = document.getElementById('share-button');
 
         let contentResponses = [];
         let currentIndex = 0;
@@ -252,29 +253,25 @@
         }
 
         function displayAlbum() {
-            
-            // const albumData = parseAlbumResponse(contentResponses[currentIndex]);
             const albumData = contentResponses[currentIndex];
 
             document.getElementById('albumTitle').textContent = albumData.title.slice(1, -1);
 
-            const artists =  albumData.pair.split("`"); // Cross reference with uniqueDelim in callLLM in app.js to make sure this functions properly
-
+            const artists = albumData.pair.split("`");
 
             const songList = document.getElementById('songList');
             songList.innerHTML = '';
             albumData.finalized_tracks.forEach((track, index) => {
                 const track_details = track.split("|");
                 
-            
                 const songElement = document.createElement('div');
                 songElement.className = 'song-element hover:bg-hover-bg rounded';
                 songElement.innerHTML = `
                     <span class="w-8 text-right mr-4 text-secondary-text">${index + 1}</span>
-                        <div class="flex-grow">
-                            <p class="font-normal">${track_details[0]}</p>
-                        </div>
-                        <span class="text-secondary-text song-runtime">3:30</span>
+                    <div class="flex-grow">
+                        <p class="font-normal">${track_details[0]}</p>
+                    </div>
+                    <span class="text-secondary-text song-runtime">3:30</span>
                 `;
                 // Add event listeners for tooltip
                 songElement.addEventListener('mouseenter', (e) => {
@@ -293,11 +290,9 @@
                     }
                 });
                 songList.appendChild(songElement);
-            
             });
 
             document.getElementById('albumDetails').textContent = `${artists[0]} & ${artists[1]} • ${albumData.finalized_tracks.length} songs`;
-
 
             albumContent.classList.remove('hidden');
             updateNavigation();
@@ -320,6 +315,71 @@
                 currentIndex++;
                 displayAlbum();
             }
+        });
+
+        // New function to generate custom graphic
+        function generateCustomGraphic(albumData) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size (adjust as needed)
+            canvas.width = 1080;  // Instagram-friendly size
+            canvas.height = 1080;
+            
+            // Set background
+            ctx.fillStyle = '#1e1e1e';  // Dark background
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Load album cover
+            const img = new Image();
+            img.crossOrigin = "Anonymous";  // Handle CORS issues
+            img.onload = () => {
+                // Draw album cover
+                ctx.drawImage(img, 40, 40, 400, 400);
+                
+                // Set text styles
+                ctx.fillStyle = '#FFFFFF';  // White text
+                ctx.font = 'bold 48px Arial';
+                
+                // Draw album title
+                ctx.fillText(albumData.title.slice(1, -1), 480, 80, 560);
+                
+                // Draw artist names
+                const artists = albumData.pair.split("`");
+                ctx.font = '36px Arial';
+                ctx.fillText(`${artists[0]} & ${artists[1]}`, 480, 140, 560);
+                
+                // Draw track list
+                ctx.font = '24px Arial';
+                albumData.finalized_tracks.slice(0, 10).forEach((track, index) => {
+                    const trackName = track.split("|")[0];
+                    ctx.fillText(`${index + 1}. ${trackName}`, 480, 200 + index * 40, 560);
+                });
+                
+                // Draw footer
+                ctx.font = 'italic 24px Arial';
+                ctx.fillText("Generated with Concept Album Creator", 40, 1060);
+                
+                // Generate and download image
+                const imageData = canvas.toDataURL('image/png');
+                downloadImage(imageData, `${albumData.title.slice(1, -1)} - Share.png`);
+            };
+            img.src = 'blondey.png';  // Replace with actual album cover URL
+        }
+
+        function downloadImage(imageData, fileName) {
+            const link = document.createElement('a');
+            link.href = imageData;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Update share button click handler
+        shareButton.addEventListener('click', () => {
+            const currentAlbumData = contentResponses[currentIndex];
+            generateCustomGraphic(currentAlbumData);
         });
 
         async function init() {

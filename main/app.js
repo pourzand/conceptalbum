@@ -1306,7 +1306,7 @@ function removeIntersection(setA, setB) {
   return setB;
 }
 
-function responseParsing(response,artistOneSongs,artistTwoSongs) {
+function responseParsing(response, entireDiscogOne, entireDiscoTwo) {
   const lines = response.split('\n');
   // console.log(lines);
   const pair = lines[0].trim();
@@ -1340,7 +1340,7 @@ function responseParsing(response,artistOneSongs,artistTwoSongs) {
     }
   });
 
-  not_direct_copies = basicSimilarityMatch(non_repeat_tracks, pair,artistOneSongs,artistTwoSongs);
+  not_direct_copies = basicSimilarityMatch(non_repeat_tracks, pair, entireDiscogOne,entireDiscoTwo);
 
   // console.log("In Response Parsing: ", {title , non_repeat_tracks , pair })
   finalized_tracks = not_direct_copies;
@@ -1417,7 +1417,7 @@ function basicSimilarityMatch(non_repeat_tracks, pair , artistOneSongs,artistTwo
 
 
 
-async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs) {
+async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs, entireDiscogOne, entireDiscoTwo) {
   // Hardcoded for now, future use dotenv
   var geminiApiKey = "AIzaSyB4N79Wwr8QfI6FKSeeGkPwhCqZoPmJwqg";
   const llm = new ChatGoogleGenerativeAI({
@@ -1454,7 +1454,7 @@ async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs) {
   // basicSimilarityMatch(formattedResult
   console.log(">DEBUG_COPIED_SONGS");
 
-  return responseParsing(formattedResult,artistOneSongs,artistTwoSongs);
+  return responseParsing(formattedResult,entireDiscogOne,entireDiscoTwo);
 }
 
 
@@ -1820,7 +1820,7 @@ app.get('/artists', async function(req, res) {
 
 
       // console.log(prompt);
-      promises.push(callLLM(pairArray, genreString,artistOneSongs,artistTwoSongs));
+      promises.push(callLLM(pairArray, genreString,artistOneSongs,artistTwoSongs, pairObject[artistOne], pairObject[artistTwo]));
 
     }
 

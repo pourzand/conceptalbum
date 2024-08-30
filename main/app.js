@@ -6,6 +6,7 @@ const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 
 
 const express = require('express'); // Express web server framework
+const session = require('express-session');
 const request = require('request'); // "Request" library
 const cors = require('cors');
 const querystring = require('querystring');
@@ -1460,7 +1461,7 @@ async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs, ent
 
 
 // Function to fetch similar artists with caching and prioritize by popularity
-async function fetchSimilarArtists(artistId, popularity) {
+async function fetchSimilarArtists(artistId, popularity, access_token) {
   if (similarArtistsCache.has(artistId)) {
     console.log("----------cache used for similar artist----------");
     return similarArtistsCache.get(artistId).artists;
@@ -1562,7 +1563,7 @@ function findValidPairs(pairData, artistNames) {
 }
 
 // Function to fetch artist's albums
-async function fetchAlbums(artistId) {
+async function fetchAlbums(artistId, access_token) {
   apiCallCounter.total += 1;
   apiCallCounter.getAlbums += 1;
   return new Promise((resolve, reject) => {
@@ -1584,7 +1585,7 @@ async function fetchAlbums(artistId) {
 }
 
 // Function to fetch tracks from an album and filter them based on the artist's presence
-async function fetchTracks(albumId, artistId) {
+async function fetchTracks(albumId, artistId, access_token) {
   apiCallCounter.total += 1;
   apiCallCounter.getSongs += 1;
   return new Promise((resolve, reject) => {
@@ -1611,34 +1612,18 @@ function removeFeaturedArtists(trackName) {
   return trackName.replace(/ *\([^)]*\) */g, "");
 }
 
-// Function to get the artist ID by name
-async function fetchArtistId(artistName) {
-  apiCallCounter.total += 1;
-  apiCallCounter.getTopArtists += 1;
-  return new Promise((resolve, reject) => {
-    const url = `https://api.spotify.com/v1/search?q=${encodeURIComponent(artistName)}&type=artist&limit=1`;
-    request.get({
-      url: url,
-      headers: {
-        'Authorization': 'Bearer ' + access_token,
-        'Content-Type': 'application/json'
-      },
-      json: true
-    }, (error, response, body) => {
-      if (error) {
-        return reject(error);
-      }
-      if (body.artists.items.length > 0) {
-        resolve(body.artists.items[0].id);
-      } else {
-        reject(new Error(`Artist not found: ${artistName}`));
-      }
-    });
-  });
+
+// Authentication middleware to protect routes
+function ensureAuthenticated(req, res, next) {
+  if (req.session && req.session.access_token) {
+    return next(); // User is authenticated, proceed to the next middleware or route handler
+  } else {
+    res.redirect('/login'); // If not authenticated, redirect to login
+  }
 }
 
 // Function to fetch the user's top artists and their similar artists
-async function fetchTopArtists() {
+async function fetchTopArtists(access_token) {
   return new Promise((resolve, reject) => {
     const artistList = {
       url: `https://api.spotify.com/v1/me/top/artists/?limit=${num_artists}`,
@@ -1659,7 +1644,7 @@ async function fetchTopArtists() {
           top_artist_names.add(artist.name);
 
           try {
-            const similarArtists = await fetchSimilarArtists(artist.id, artist.popularity);
+            const similarArtists = await fetchSimilarArtists(artist.id, artist.popularity, access_token);
             artist_list.items[i].similar_artists = similarArtists;
           } catch (error) {
             console.error(`Error fetching similar artists for ${artist.name}:`, error);
@@ -1675,19 +1660,19 @@ async function fetchTopArtists() {
 }
 
 // Main function to get all song names for a given artist
-async function getAllSongs(artistId, popularity) {
+async function getAllSongs(artistId, popularity, access_token) {
   if (songCache.has(artistId)) {
     console.log("----------cache used for songs----------");
     return songCache.get(artistId).songs;
   }
 
   try {
-    const albums = await fetchAlbums(artistId);
+    const albums = await fetchAlbums(artistId, access_token);
     const allTracksSet = new Set();
     console.log("ALBUMS: " , albums);
 
     for (const album of albums) {
-      const tracks = await fetchTracks(album.id, artistId);
+      const tracks = await fetchTracks(album.id, artistId, access_token);
       for (const track of tracks) {
         const cleanedTrackName = removeFeaturedArtists(track.name);
         allTracksSet.add(cleanedTrackName);
@@ -1713,7 +1698,7 @@ async function getAllSongs(artistId, popularity) {
 }
 
 // Main function to process pair data and add song names
-async function processPairs(pairData) {
+async function processPairs(pairData, access_token) {
   for (let i = 0; i < pairData.length; i++) {
     var pair = pairData[i];
     console.log("pair: " , pair);
@@ -1722,7 +1707,7 @@ async function processPairs(pairData) {
       console.log("artist name: " + artistName);
       var artistId = pair.ids[i];
       console.log("artist id: " + artistId);
-      var songs = await getAllSongs(pair.ids[i], pair.popularity[i]);
+      var songs = await getAllSongs(pair.ids[i], pair.popularity[i], access_token);
       pair[artistName] = songs;
       console.log("got songs!");
 
@@ -1748,9 +1733,17 @@ app.use(express.static(__dirname + '/public'))
   .use(cors())
   .use(cookieParser());
 
+// Set up express-session middleware
+app.use(session({
+  secret: generateRandomString(16), 
+  resave: false,             // Avoid resaving session if unmodified
+  saveUninitialized: true,   // Save uninitialized sessions
+  cookie: { secure: false }  // Set to true if using HTTPS
+}));
+
 app.get('/login', function(req, res) {
   const state = generateRandomString(16);
-  res.cookie(stateKey, state);
+  req.session[stateKey] = state;  // Store state in session
 
   // Your application requests authorization
   const scope = 'user-read-private user-read-email user-top-read';
@@ -1764,21 +1757,21 @@ app.get('/login', function(req, res) {
     }));
 });
 
-// TODO: In Development
-app.get('/results', (req, res) => {
+app.get('/results', ensureAuthenticated, (req, res) => {
   res.sendFile(__dirname + '/public/results.html');
 });
 
-app.get('/artists', async function(req, res) {
+
+app.get('/artists', ensureAuthenticated, async function(req, res) {
   try {
 
     // uncomment if not using sample data
-    const top_artists = await fetchTopArtists();
+    const top_artists = await fetchTopArtists(req.session.access_token);
     console.log("-----TOP ARTISTS-----\n" + top_artists);
     const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
     console.log('Found pairs:', pairs); // Debug statement
     
-    const processedPairs = await processPairs(pairs);
+    const processedPairs = await processPairs(pairs, access_token);
     console.log('Processed pairs:', processedPairs); // Debug statement 
 
     //Logging API Usage Information
@@ -1819,7 +1812,8 @@ app.get('/artists', async function(req, res) {
       var prompt = prompt2;
 
 
-      // console.log(prompt);
+
+      console.log(prompt);
       promises.push(callLLM(pairArray, genreString,artistOneSongs,artistTwoSongs, pairObject[artistOne], pairObject[artistTwo]));
 
     }
@@ -1839,7 +1833,7 @@ app.get('/artists', async function(req, res) {
 app.get('/callback', function(req, res) {
   const code = req.query.code || null;
   const state = req.query.state || null;
-  const storedState = req.cookies ? req.cookies[stateKey] : null;
+  const storedState = req.session[stateKey];  // Retrieve state from session
 
   if (state === null || state !== storedState) {
     res.redirect('/#' +
@@ -1847,7 +1841,7 @@ app.get('/callback', function(req, res) {
         error: 'state_mismatch'
       }));
   } else {
-    res.clearCookie(stateKey);
+    delete req.session[stateKey];  // Remove state from session
     const authOptions = {
       url: 'https://accounts.spotify.com/api/token',
       form: {
@@ -1863,12 +1857,12 @@ app.get('/callback', function(req, res) {
 
     request.post(authOptions, function(error, response, body) {
       if (!error && response.statusCode === 200) {
-        access_token = body.access_token;
-        const refresh_token = body.refresh_token;
+        req.session.access_token = body.access_token;
+        req.session.refresh_token = body.refresh_token;
 
         const options = {
           url: 'https://api.spotify.com/v1/me',
-          headers: { 'Authorization': 'Bearer ' + access_token },
+          headers: { 'Authorization': 'Bearer ' + req.session.access_token },
           json: true
         };
 
@@ -1878,8 +1872,8 @@ app.get('/callback', function(req, res) {
         });
         res.redirect('/#' +
           querystring.stringify({
-            access_token: access_token,
-            refresh_token: refresh_token
+            access_token: req.session.access_token,
+            refresh_token: req.session.refresh_token
           }));
       } else {
         res.redirect('/#' +
@@ -1893,7 +1887,7 @@ app.get('/callback', function(req, res) {
 
 app.get('/refresh_token', function(req, res) {
   // Requesting access token from refresh token
-  const refresh_token = req.query.refresh_token;
+  const refresh_token = req.session.refresh_token;
   const authOptions = {
     url: 'https://accounts.spotify.com/api/token',
     headers: { 'Authorization': 'Basic ' + (Buffer.from(client_id + ':' + client_secret).toString('base64')) },
@@ -1906,9 +1900,9 @@ app.get('/refresh_token', function(req, res) {
 
   request.post(authOptions, function(error, response, body) {
     if (!error && response.statusCode === 200) {
-      const access_token = body.access_token;
+      req.session.access_token = body.access_token;
       res.send({
-        'access_token': access_token
+        'access_token': req.session.access_token
       });
     }
   });

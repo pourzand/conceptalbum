@@ -1660,13 +1660,14 @@ async function fetchTopArtists(access_token) {
 }
 
 // Main function to get all song names for a given artist
-async function getAllSongs(artistId, popularity, access_token) {
+async function getAllSongs(artistId, popularity, access_token, artistNameForDebug) {
   if (songCache.has(artistId)) {
-    console.log("----------cache used for songs----------");
+    console.log("----------cache used for " + artistNameForDebug +"'s songs----------");
     return songCache.get(artistId).songs;
   }
 
   try {
+    console.log("********* songs fetched and stored for " + artistNameForDebug +"'s songs *********");
     const albums = await fetchAlbums(artistId, access_token);
     const allTracksSet = new Set();
     console.log("ALBUMS: " , albums);
@@ -1707,9 +1708,9 @@ async function processPairs(pairData, access_token) {
       console.log("artist name: " + artistName);
       var artistId = pair.ids[i];
       console.log("artist id: " + artistId);
-      var songs = await getAllSongs(pair.ids[i], pair.popularity[i], access_token);
+      var songs = await getAllSongs(pair.ids[i], pair.popularity[i], access_token, artistName);
       pair[artistName] = songs;
-      console.log("got songs!");
+      console.log("got songs!", songs);
 
     }
   }
@@ -1788,10 +1789,10 @@ app.get('/artists', ensureAuthenticated, async function(req, res) {
     for (let i = 0; i < 3; i++) {
       //let pairObject = sample_data[i]; // TODO: FIX LATER
       let pairObject = processedPairs[i]; // TODO: FIX LATER
-      console.log('pairObject: ' + pairObject);
+      console.log('pairObject: ' , pairObject);
 
       let pairObjKeys = Object.keys(pairObject);
-      console.log('pairObjectKeys: ' + pairObjKeys);
+      console.log('pairObjectKeys: ' , pairObjKeys);
 
       var pairArray = pairObject['pair']
       var genreString = pairObject['genres']
@@ -1803,9 +1804,9 @@ app.get('/artists', ensureAuthenticated, async function(req, res) {
       var artistTwoSongs = getRandomItems(pairObject[artistTwo],numSongsForPrompt);
       // artistOneSongs = pairObject[artistOne];
       // artistTwoSongs = pairObject[artistTwo];
-      console.log("pair string " + pairArray);
-      console.log("genre string " + genreString);
-      // console.log("artist one " + artistOneSongs); // Debug
+      console.log("pair string " , pairArray);
+      console.log("genre string " , genreString);
+      console.log("artist one " , artistOneSongs); // Debug
       
       var prompt1 = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
       var prompt2 = "When provided information based on two musical artists, come up with what a collaborative work between them would look like. Come up with the album title, track names, and features. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentioned. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20. The two artists are "+ artistOne + " and " + artistTwo +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artistOne+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artistTwo+"'s existing songs: "+artistTwoSongs;

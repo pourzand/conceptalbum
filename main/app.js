@@ -1562,7 +1562,6 @@ function findValidPairs(pairData, artistNames) {
   return Array.from(validPairs);
 }
 
-// Function to fetch artist's albums
 async function fetchAlbums(artistId, access_token) {
   apiCallCounter.total += 1;
   apiCallCounter.getAlbums += 1;
@@ -1579,7 +1578,9 @@ async function fetchAlbums(artistId, access_token) {
       if (error) {
         return reject(error);
       }
-      resolve(body.items || []);
+      console.log("FULL BODY =>", body);
+      console.log("ALBUMS BODY =>", body.items); // This might be undefined
+      resolve(body.items || []); // Adjust this based on the actual structure
     });
   });
 }
@@ -1772,7 +1773,7 @@ app.get('/artists', ensureAuthenticated, async function(req, res) {
     const pairs = findValidPairs(findArtistPairs(top_artists), top_artist_names);
     console.log('Found pairs:', pairs); // Debug statement
     
-    const processedPairs = await processPairs(pairs, access_token);
+    const processedPairs = await processPairs(pairs, req.session.access_token);
     console.log('Processed pairs:', processedPairs); // Debug statement 
 
     //Logging API Usage Information

@@ -1,6 +1,7 @@
 // const { HfInference } = require("@huggingface/inference");
 // const { HuggingFaceInference } = require("@huggingface/inference");
 // Ignore above for now
+require('dotenv').config();
 const { ChatGoogleGenerativeAI } = require("@langchain/google-genai");
 // run "npm install @langchain/google-genai"
 
@@ -17,9 +18,10 @@ const port = 8888;
 // const client_id = 'ea4ceeed7ac442f0a692fae6b60e70d4'; // Your client id
 // const client_secret = '69329331d2f847cc9e52216291bd1e76'; // Your secret
 // mine
-const client_id = '0dd435f3ccc940f4a8311a13c458b279'; // Your client id
-const client_secret = '2f43b3f46b4f4966b2dacd067a58cffe'; // Your secret
-const redirect_uri = 'http://localhost:8888/callback'; // Your redirect uri
+const client_id = process.env.CLIENT_ID;
+const client_secret = process.env.CLIENT_SECRET;
+const redirect_uri = process.env.REDIRECT_URI;
+var geminiApiKey = process.env.GEMINI_API_KEY;
 
 const top_artist_names = new Set();
 const num_pairs = 5;
@@ -1420,7 +1422,6 @@ function basicSimilarityMatch(non_repeat_tracks, pair , artistOneSongs,artistTwo
 
 async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs, entireDiscogOne, entireDiscoTwo) {
   // Hardcoded for now, future use dotenv
-  var geminiApiKey = "AIzaSyB4N79Wwr8QfI6FKSeeGkPwhCqZoPmJwqg";
   const llm = new ChatGoogleGenerativeAI({
     apiKey: geminiApiKey,
     model: "gemini-1.5-flash", // Initial responses were based on PRO
@@ -1782,13 +1783,12 @@ app.get('/artists', ensureAuthenticated, async function(req, res) {
     console.log(`Calls for getting albums: ${apiCallCounter.getAlbums}`);
     console.log(`Calls for getting songs: ${apiCallCounter.getSongs}`);
     console.log(`Calls for getting top artists: ${apiCallCounter.getTopArtists}`);
-
+ 
     //Uncomment the line below to use sample data rather than calling Spotify API for data 
     //processedPairs = sample_data;
 
     const promises = [];
     for (let i = 0; i < 3; i++) {
-      //let pairObject = sample_data[i]; // TODO: FIX LATER
       let pairObject = processedPairs[i]; // TODO: FIX LATER
       console.log('pairObject: ' , pairObject);
 

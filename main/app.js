@@ -15,9 +15,6 @@ const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const port = 8888;
 
-// const client_id = 'ea4ceeed7ac442f0a692fae6b60e70d4'; // Your client id
-// const client_secret = '69329331d2f847cc9e52216291bd1e76'; // Your secret
-// mine
 const client_id = process.env.CLIENT_ID;
 const client_secret = process.env.CLIENT_SECRET;
 const redirect_uri = process.env.REDIRECT_URI;
@@ -1309,6 +1306,38 @@ function removeIntersection(setA, setB) {
   return setB;
 }
 
+// Levenshtein distance function
+function levenshteinDistance(s1, s2) {
+  const len1 = s1.length;
+  const len2 = s2.length;
+  const dp = Array(len2 + 1).fill().map(() => Array(len1 + 1).fill(0));
+
+  for (let i = 0; i <= len1; i++) dp[0][i] = i;
+  for (let i = 0; i <= len2; i++) dp[i][0] = i;
+
+  for (let i = 1; i <= len2; i++) {
+    for (let j = 1; j <= len1; j++) {
+      if (s2[i - 1] === s1[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = Math.min(
+          dp[i - 1][j - 1] + 1, // Substitution
+          dp[i - 1][j] + 1,     // Deletion
+          dp[i][j - 1] + 1      // Insertion
+        );
+      }
+    }
+  }
+  return dp[len2][len1];
+}
+
+// Similarity check function (using normalized Levenshtein distance)
+function similarity(s1, s2) {
+  const maxLength = Math.max(s1.length, s2.length);
+  if (maxLength === 0) return 1; // Avoid division by zero for empty strings
+  return (maxLength - levenshteinDistance(s1, s2)) / maxLength;
+}
+
 function responseParsing(response, entireDiscogOne, entireDiscoTwo) {
   const lines = response.split('\n');
   // console.log(lines);
@@ -1343,7 +1372,7 @@ function responseParsing(response, entireDiscogOne, entireDiscoTwo) {
     }
   });
 
-  not_direct_copies = basicSimilarityMatch(non_repeat_tracks, pair, entireDiscogOne,entireDiscoTwo);
+  not_direct_copies = basicSimilarityMatch(non_repeat_tracks, entireDiscogOne,entireDiscoTwo);
 
   // console.log("In Response Parsing: ", {title , non_repeat_tracks , pair })
   finalized_tracks = not_direct_copies;
@@ -1353,69 +1382,39 @@ function responseParsing(response, entireDiscogOne, entireDiscoTwo) {
 }
 
 
-function basicSimilarityMatch(non_repeat_tracks, pair , artistOneSongs,artistTwoSongs) {
-
-
-  // runtime could maybe be better if i parallelized the iterating during the parsing process on results.html by passing the list of songs for every artist for every album(6 song lists) but that might just be more work
-  // but in theory shouldnt be ran when deployed, just for debugging
-  // const lines = response.split('\n');
-  // const pair = lines[0].trim();
-  // const title = lines[1].trim();
- 
-  const tracks = non_repeat_tracks.map(line => line.split("|")[0]).map(line => { // discard track description
-    const index = line.indexOf('(');  // find the position of '('
-    return index !== -1 ? line.slice(0, index-1) : line;  // Keep everything before '(' to remove features when song title matching
-  }).filter(line => line !== '');  // Filter out empty lines
-
+function basicSimilarityMatch(non_repeat_tracks, artistOneSongs, artistTwoSongs) {
+  const similarityThreshold = 0.8; // Can adjust this threshold
+  
   const firstArtistSet = new Set(artistOneSongs.map(line => {
-    const index = line.indexOf('(');  // find the position of '('
-    return index !== -1 ? line.slice(0, index-1) : line;  // keep everything before '(' to remove features when song title matching
+    const index = line.indexOf('(');  
+    return index !== -1 ? line.slice(0, index - 1) : line;  
   }).map(item => item.toLowerCase()));
 
   const secondArtistSet = new Set(artistTwoSongs.map(line => {
-    const index = line.indexOf('(');  // find the position of '('
-    return index !== -1 ? line.slice(0, index-1) : line;  // keep everything before '(' to remove features when song title matching
+    const index = line.indexOf('(');
+    return index !== -1 ? line.slice(0, index - 1) : line;  
   }).map(item => item.toLowerCase()));
 
-  const tracksSet = new Set(tracks.map(item => item.toLowerCase()));
-
-  // built in intersection not supported for some reason
-  // const firstOverlap = (firstArtistSet.intersection(tracksSet)).size / firstArtistSet.size;
-  // const secondOverlap = (secondArtistSet.intersection(tracksSet)).size / secondArtistSet.size;
-
-  const firstOverlap = (intersection_def(firstArtistSet,tracksSet)).size / firstArtistSet.size;
-  const secondOverlap = (intersection_def(secondArtistSet,tracksSet)).size / secondArtistSet.size;
-  const artists =  pair.split("`"); // Cross reference with uniqueDelim in callLLM
-
-  console.log("Songs Titles DIRECTLY Copied:\n"+artists[0]+": " + (firstOverlap * 100)+ "%\n" + artists[1] + ": " + (100* secondOverlap)+"%");
-  // Does not account for instances where the LLM will concatenate song titles together because those are harder to detect and to a degree, concatenating them is creative to an extent. 
-
-  // debug statements
-  // console.log(artists[0] ," INTERSECTION: " ,intersection_def(firstArtistSet,tracksSet) );
-  // console.log(artists[1] ," INTERSECTION: " ,(intersection_def(secondArtistSet,tracksSet)) );
-  // console.log(artists[0]," PARSED: ",firstArtistSet );
-  // console.log(artists[1]," PARSED: ", secondArtistSet);
-  // console.log("trackset: ", tracksSet);
-
-  // NEW 
-  // removing direct copies
-  firstArtistRemoved = removeIntersection(firstArtistSet,tracksSet) // tracks - first artist copies
-  bothArtistRemoved = removeIntersection(secondArtistSet,firstArtistRemoved) // tracks - first artist copies - second artist copies
-
-  // TODO: re-add descriptions since current tracks are stripped.
-  // foreach item in final set, if substring is present, add to some array or remove from existing array and then return
-  // cleanedTracks = Array.from(bothArtistRemoved.values());
   let cleanedTracks = non_repeat_tracks.filter(track => {
-    let trackName = track.split("|")[0].trim();
-    let index = trackName.indexOf('(');
-    let cleanedTrackName = index !== -1 ? trackName.slice(0, index - 1) : trackName;
-    return bothArtistRemoved.has(cleanedTrackName.toLowerCase());
+    const trackName = track.split("|")[0].trim();
+    const index = trackName.indexOf('(');
+    const cleanedTrackName = index !== -1 ? trackName.slice(0, index - 1) : trackName.toLowerCase();
+
+    // Check if the track name is similar to any song from the two artists' sets
+    let isSimilarToFirstArtist = Array.from(firstArtistSet).some(song =>
+      similarity(cleanedTrackName.toLowerCase(), song) > similarityThreshold
+    );
+
+    let isSimilarToSecondArtist = Array.from(secondArtistSet).some(song =>
+      similarity(cleanedTrackName.toLowerCase(), song) > similarityThreshold
+    );
+
+    // Only include the track if it's not too similar to any existing song
+    return !isSimilarToFirstArtist && !isSimilarToSecondArtist;
   });
 
-  console.log("TOTALLY CLEANED: ",cleanedTracks);
-
+  console.log("TOTALLY CLEANED: ", cleanedTracks);
   return cleanedTracks;
-
 }
 
 

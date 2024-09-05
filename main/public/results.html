@@ -284,7 +284,7 @@
             // Create tooltip
             const tooltip = document.createElement('div');
             tooltip.className = 'tooltipTemp';
-            tooltip.textContent = "Click here to share your album";
+            tooltip.textContent = "Click here to share your album once loaded";
             
             // Position the tooltip
             const buttonRect = shareButton.getBoundingClientRect();
@@ -363,7 +363,7 @@
                     <div class="flex-grow">
                         <p class="font-normal">${track_details[0]}</p>
                     </div>
-                    <span class="text-secondary-text song-runtime">${generateRandomRuntime()}</span>
+                    <span class="text-secondary-text song-runtime mr-4">${generateRandomRuntime()}</span>
                 `;
                 // Add event listeners for tooltip
                 songElement.addEventListener('mouseenter', (e) => {

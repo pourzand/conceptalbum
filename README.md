@@ -1,4 +1,10 @@
-# conceptalbum
+# mixi
+![mixi_w_trans-removebg](https://github.com/user-attachments/assets/39510adc-c824-41fb-aca2-9d03d5a19703)
+
+welcome to mixi, a webapp that creates concept collaborative projects between a random pair of your top artists. 
+
+stack:
+Express.js, Langchain(Google Gemini Pro), Tailwind CSS,
 
 ### TODO:
 
@@ -10,6 +16,6 @@
 
 - [x] dotenv implementaion for client id/secret and google api token
 
-- [ ] logo & name  to be finalized
+- [x] logo & name  to be finalized
 
 - [ ] custom image uploading for new share menu

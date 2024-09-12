@@ -1,5 +1,6 @@
 # mixi
-![mixi_w_trans-removebg](https://github.com/user-attachments/assets/39510adc-c824-41fb-aca2-9d03d5a19703)
+<img src="https://github.com/user-attachments/assets/39510adc-c824-41fb-aca2-9d03d5a19703" width="60">
+
 
 welcome to mixi, a webapp that creates concept collaborative projects between a random pair of your top artists. 
 

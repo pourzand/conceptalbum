@@ -20,3 +20,5 @@ Express.js, Langchain(Google Gemini Pro), Tailwind CSS,
 - [x] logo & name  to be finalized
 
 - [ ] custom image uploading for new share menu
+
+- [ ] add cleaning for "feat." with no parentheses or just "featuring"

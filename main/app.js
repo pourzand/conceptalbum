@@ -1384,6 +1384,9 @@ function responseParsing(response, entireDiscogOne, entireDiscoTwo) {
 
 function basicSimilarityMatch(non_repeat_tracks, artistOneSongs, artistTwoSongs) {
   const similarityThreshold = 0.8; // Can adjust this threshold
+
+  // TODO: Add cleaning for "feat." with no parentheses or just "featuring"
+  // Current cleaning is just for "(feat. "
   
   const firstArtistSet = new Set(artistOneSongs.map(line => {
     const index = line.indexOf('(');  

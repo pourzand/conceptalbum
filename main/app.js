@@ -20,6 +20,9 @@ const client_secret = process.env.CLIENT_SECRET;
 const redirect_uri = process.env.REDIRECT_URI;
 var geminiApiKey = process.env.GEMINI_API_KEY;
 
+let current_model = "gemini-1.5-pro";
+let lastCallTimestamp = null;
+
 const top_artist_names = new Set();
 const num_pairs = 5;
 const num_artists = 50;
@@ -1417,46 +1420,87 @@ function basicSimilarityMatch(non_repeat_tracks, artistOneSongs, artistTwoSongs)
   return cleanedTracks;
 }
 
-
+function checkAndSwitchModel() {
+  const now = Date.now();
+  if (lastCallTimestamp && now - lastCallTimestamp > 2 * 60 * 1000) {
+    // More than 2 minutes have passed since the last call
+    console.log("More than 2 minutes since last call, switching back to gemini-1.5-pro.");
+    current_model = "gemini-1.5-pro";
+  }
+}
 
 async function callLLM(artists, genreString, artistOneSongs, artistTwoSongs, entireDiscogOne, entireDiscoTwo) {
-  // Hardcoded for now, future use dotenv
-  const llm = new ChatGoogleGenerativeAI({
-    apiKey: geminiApiKey,
-    model: "gemini-1.5-flash", // Initial responses were based on PRO
-    // model: "gemini-1.5-pro",
-    temperature: .2,
-    maxRetries: 2,
-  });
+  // Check if we need to switch back to pro model before making a call
+  checkAndSwitchModel();
 
-  // prompt creation
-  var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artists[0] + " and " + artists[1] +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artists[0]+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artists[1]+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
-
-  const result = await llm.invoke([
-    [
-      "system",
-      prompt,
-    ]
-  ]);
+  // Define the two models
+  const proModel = "gemini-1.5-pro";
+  const flashModel = "gemini-1.5-flash";
   
-  // DEBUG STATEMENTS
+  let modelToUse = current_model;  // Start with the pro model
+  console.log("----------CURRENT MODEL: " + current_model + "----------");
 
-  // console.log("DEBUG_PROMPT:<" , prompt, ">DEBUG_PROMPT");
+  try {
+    const llm = new ChatGoogleGenerativeAI({
+      apiKey: geminiApiKey,
+      model: modelToUse, // Use the current model
+      temperature: 0.2,
+      maxRetries: 2,
+    });
 
-  console.log("done with singular callLLM function call");
-  const uniqueDelim = "`"; // the purpose for this is just appending the array will sepearte the artists with a comma and when we go to split
-  // ,artists with commas or typical punctation in their names will be split at the wrong spots, for now using a backtick but could use some crazy unique combo of characters if we wanted to be super robust in our solution.
-  const formattedResult = artists[0] + uniqueDelim + artists[1]+ "\n" + result["content"];
+    // Generate the prompt
+    var prompt = "When provided information based on two musical artists, you are to create an appealing conceptual album between those two artists. This album is to take inspiration from the bodies of work of these two artists and seamlessly blend them into one cohesive project. You are to tastefully pick and place appropiate and exciting features in this hypothetical project. In addition you will be supplied extensive data on the titles of each of these artists existing song titles are inspiration on how to name the songs on this concept album. The two artists are "+ artists[0] + " and " + artists[1] +" The genre of these two artists are " + genreString + ". Furthermore, here are some of names of "+ artists[0]+ "'s existing songs: "+artistOneSongs +". Here are also some of names of "+ artists[1]+"'s existing songs: "+artistTwoSongs+". Use these song titles are inspiration for titling the songs on the project. Using all of this information please produce this conceptual album. features are only listed if they are artists that are NOT the two main collaborators. In addition the number of songs should NEVER exceed 20 at most, however you can decide the number of songs less than this at your own discretion. Do not copy or reusing existing song names as the song names of this conceptual album. Format response should include the Title of the project, each song with a name and its possible feature(s) if applicable along with a brief description of the track and its atmosphere and vibe. each song is followed by a new line character. There should be nothing else included in your response besides these things. The format for your response should be #Title#\\nTrack name(feat. featured artist if any)|description\\nTrack name(featured artist if any)|description. in addition the title should strictly only contain the title and nothing else, do not include the artists in the title generated. The response should not have any markdown styling aside from the unique styling I've already mentiond. Lastly, do not repeat or copy songs names from the song names already provided, only take inspiration do not blatantly copy. Again do not copy song titles from those already provided and do not let the total number of songs exceed 20";
 
+    const result = await llm.invoke([
+      [
+        "system",
+        prompt,
+      ]
+    ]);
+    lastCallTimestamp = Date.now();
+    console.log("done with singular callLLM function call");
 
-  // console.log("DEBUG_RESULT:< ", formattedResult,">DEBUG_RESULT");
+    const formattedResult = artists[0] + "`" + artists[1] + "\n" + result["content"];
 
-  console.log("DEBUG_COPIED_SONGS:<");
-  // basicSimilarityMatch(formattedResult
-  console.log(">DEBUG_COPIED_SONGS");
+    return responseParsing(formattedResult, entireDiscogOne, entireDiscoTwo);
 
-  return responseParsing(formattedResult,entireDiscogOne,entireDiscoTwo);
+  } catch (error) {
+    if (error.message && error.message.includes('[429 Too Many Requests]')) {
+      // If we get a 429 error, switch to the "gemini-1.5-flash" model
+      console.log("429 error encountered, switching to gemini-1.5-flash model.");
+      current_model = flashModel;
+
+      // Retry with the new model
+      try {
+        const llm = new ChatGoogleGenerativeAI({
+          apiKey: geminiApiKey,
+          model: flashModel,  // Use the fallback model
+          temperature: 0.2,
+          maxRetries: 2,
+        });
+
+        const result = await llm.invoke([
+          [
+            "system",
+            prompt,
+          ]
+        ]);
+
+        console.log("done with retry after 429");
+        const formattedResult = artists[0] + "`" + artists[1] + "\n" + result["content"];
+
+        return responseParsing(formattedResult, entireDiscogOne, entireDiscoTwo);
+      } catch (retryError) {
+        console.error("Retry failed after switching to gemini-1.5-flash", retryError);
+        throw retryError;
+      }
+    } else {
+      // If it's any other error, just log it
+      console.error("Non-429 error occurred", error);
+    }
+  }
 }
+
 
 
 

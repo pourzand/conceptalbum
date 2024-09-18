@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Concept Album Results</title>
+    <link rel="icon" type="image/png" href="assets/logo.png">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/feather-icons/4.28.0/feather.min.js"></script>
+
     <style>
         :root {
             /* Primary Colors */
@@ -22,7 +25,8 @@
             --tooltip-bg: rgba(0, 0, 0, 0.8);
             --tooltip-text: #FFFFFF;
             --disabled-bg: rgba(107, 114, 128, 0.8);
-            --hover-bg: #1555bb; /* Background color on hover */
+            /* --hover-bg: #1555bb; Background color on hover */
+            --hover-bg: #A71D11; /* Background color on hover */
             --hover-text: #D1D5DB; /* Text color on hover */
         }
 
@@ -168,9 +172,18 @@
 
         .album-cover {
             width: 100%;
-            padding-bottom: 100%; /* this makes it square */
-            background-color: var(--secondary-accent);
+            padding-top: 100%;
             position: relative;
+            background-color: var(--secondary-accent);
+            overflow: hidden;
+        }
+        .album-cover img {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 80%;
+            max-height: 80%;
         }
 
         .song-element {
@@ -220,7 +233,9 @@
                 <!-- album header -->
                 <div class="flex flex-col md:flex-row mb-8">
                     <div class="w-full md:w-64 mb-4 md:mb-0 md:mr-8">
-                        <div class="album-cover"></div>
+                        <div class="album-cover">
+                            <img src="assets/logo.png" alt="Album cover" />
+                        </div>
                     </div>
                     <div>
                         <h2 id="albumTitle" class="text-white text-2xl md:text-3xl font-bold mb-2"></h2>
@@ -359,7 +374,7 @@
                 const songElement = document.createElement('div');
                 songElement.className = 'song-element hover:bg-hover-bg rounded';
                 songElement.innerHTML = `
-                    <span class="w-8 text-right mr-4 text-secondary-text numbering">${index + 1}</span>
+                    <span class="w-8 text-right mr-4 text-secondary-text text-[#e93424] numbering">${index + 1}</span>
                     <div class="flex-grow">
                         <p class="font-normal">${track_details[0]}</p>
                     </div>
@@ -539,10 +554,11 @@
                 drawSVGPath("M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99", canvas.width / 2 + 280 + iconXShift, iconY, iconScale);
 
                 const imageData = canvas.toDataURL('image/png');
-                downloadImage(imageData, 'blondey.png'); // TODO REPLACE, with uploaded or default
+                // downloadImage(imageData, 'blondey.png'); // TODO REPLACE, with uploaded or default
                 return imageData;
             } catch {
                 alert("Please allow for the album to load before sharing")
+                return null;
             }
         }
         
@@ -556,11 +572,118 @@
             document.body.removeChild(link);
         }
 
-        // Update share button click handler
-        shareButton.addEventListener('click', () => {
-            const currentAlbumData = contentResponses[currentIndex];
-            const imageData = generateCustomGraphic(currentAlbumData);
-            // downloadImage(imageData, 'blondey.png');
+
+        // document.addEventListener('DOMContentLoaded', () => {
+        //     const sharePopup = document.getElementById('sharePopup');
+        //     const closeSharePopup = document.getElementById('closeSharePopup');
+        //     const copyButton = document.getElementById('copyButton');
+        //     const webShareButton = document.getElementById('webShareButton');
+        //     const shareImagePreview = document.getElementById('shareImagePreview');
+
+        //     // Show share popup
+        //     shareButton.addEventListener('click', () => {
+        //         const shareImage = generateCustomGraphic(contentResponses[currentIndex]);
+        //         if(shareImage != null) {
+        //             shareImagePreview.innerHTML = `<img src="${shareImage}" alt="Share Preview" class="w-full h-auto">`;
+        //             sharePopup.classList.remove('hidden');
+        //         }
+        //     });
+
+        //     // Close share popup
+        //     closeSharePopup.addEventListener('click', () => {
+        //     sharePopup.classList.add('hidden');
+        //     });
+
+        //     // Copy to clipboard
+        //     copyButton.addEventListener('click', async () => {
+        //     const shareImage = generateCustomGraphic(contentResponses[currentIndex]);
+        //     try {
+        //         await navigator.clipboard.writeText(shareImage);
+        //         alert('Image copied to clipboard!');
+        //     } catch (err) {
+        //         console.error('Failed to copy: ', err);
+        //     }
+        //     });
+
+        //     // Web Share API
+        //     webShareButton.addEventListener('click', async () => {
+        //     const shareImage = generateCustomGraphic(contentResponses[currentIndex]);
+        //     if (navigator.share) {
+        //         try {
+        //         await navigator.share({
+        //             title: 'Check out this album!',
+        //             text: 'I thought you might like this album.',
+        //             url: window.location.href
+        //         });
+        //         } catch (err) {
+        //         console.error('Error sharing: ', err);
+        //         }
+        //     } else {
+        //         // Fallback for browsers that don't support Web Share API
+        //         alert('Web Share not supported on this browser. You can copy the link instead.');
+        //     }
+        //     });
+        // });
+        document.addEventListener('DOMContentLoaded', () => {
+            const sharePopup = document.getElementById('sharePopup');
+            const closeSharePopup = document.getElementById('closeSharePopup');
+            const copyButton = document.getElementById('copyButton');
+            const webShareButton = document.getElementById('webShareButton');
+            const shareImagePreview = document.getElementById('shareImagePreview');
+            let imageBlob; // To store the image blob
+
+            // Show share popup
+            shareButton.addEventListener('click', async () => {
+                const shareImage = generateCustomGraphic(contentResponses[currentIndex]);
+                if(shareImage != null) {
+                    // Convert data URL to Blob
+                    imageBlob = await fetch(shareImage).then(r => r.blob());
+                    shareImagePreview.querySelector('img').src = shareImage;
+                    sharePopup.classList.remove('hidden');
+                }
+            });
+
+            // Close share popup
+            closeSharePopup.addEventListener('click', () => {
+                sharePopup.classList.add('hidden');
+            });
+
+            // Copy image to clipboard
+            copyButton.addEventListener('click', async () => {
+                if (imageBlob) {
+                    try {
+                        await navigator.clipboard.write([
+                            new ClipboardItem({
+                                [imageBlob.type]: imageBlob
+                            })
+                        ]);
+                        alert('Image copied to clipboard!');
+                    } catch (err) {
+                        console.error('Failed to copy: ', err);
+                        alert('Failed to copy image. Your browser might not support this feature.');
+                    }
+                }
+            });
+
+            // Web Share API
+            webShareButton.addEventListener('click', async () => {
+                if (navigator.share && imageBlob) {
+                    try {
+                        const file = new File([imageBlob], "album_share.png", { type: imageBlob.type });
+                        await navigator.share({
+                            title: 'Check out this album!',
+                            text: 'I thought you might like this album.',
+                            files: [file]
+                        });
+                    } catch (err) {
+                        console.error('Error sharing: ', err);
+                        // alert('Error sharing the image. Your browser might not support this feature.');
+                    }
+                } else {
+                    // Fallback for browsers that don't support Web Share API
+                    alert('Web Share not supported on this browser. You can copy the image instead.');
+                }
+            });
         });
 
         async function init() {
@@ -593,5 +716,30 @@
 
         init();
     </script>
+
+<div id="sharePopup" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center hidden z-50">
+    <div class="bg-[#140f0f] p-6 rounded-xl shadow-2xl max-w-md w-full relative border-2 border-[#e93424]">
+        <button id="closeSharePopup" class="absolute top-2 right-2 text-white hover:text-[#e93424] transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+        <h2 class="text-white text-2xl font-bold mb-4 text-center">Share This Album</h2>
+        <div id="shareImagePreview" class="mb-6 bg-[#1e1e1e] rounded-lg overflow-hidden shadow-inner relative border border-gray-800" style="padding-top: 177.78%;">
+            <div class="absolute inset-0 overflow-hidden">
+                <img src="" alt="Share Preview" class="absolute top-0 left-0 w- h-full object-cover object-top "> <!-- scale-[1.08] -translate-y-[3.7%]-->
+            </div>
+        </div>
+        <div class="flex justify-between space-x-4">
+            <button id="copyButton" class="flex-1 bg-[#e93424] hover:bg-[#ff3c2a] text-white px-4 py-3 rounded-lg transition-colors duration-300 ease-in-out transform hover:scale-105">
+                <span class="block text-center font-semibold">Copy Image</span>
+            </button>
+            <button id="webShareButton" class="flex-1 bg-[#e93424] hover:bg-[#ff3c2a] text-white px-4 py-3 rounded-lg transition-colors duration-300 ease-in-out transform hover:scale-105">
+                <span class="block text-center font-semibold">Share Image</span>
+            </button>
+        </div>
+    </div>
+</div>
+    
 </body>
 </html>
